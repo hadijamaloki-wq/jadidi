@@ -2,18 +2,18 @@ const { getStreamFromURL, uploadImgbb } = global.utils;
 
 module.exports = {
 	config: {
-		name: "anti", // تغيير اسم الأمر إلى anti
-		aliases: ["antichange", "ac"],
-		version: "2.0",
+		name: "anti", 
+		aliases: ["ac", "antichange"],
+		version: "2.1",
 		author: "𝗦𝗵𝗔𝗻 & Gemini",
 		countDown: 5,
 		role: 2,
 		description: {
-			en: "Anti change info box - Silent mode with 🥴 reaction"
+			en: "Anti change info box - Original Logic with 🥴 reaction"
 		},
 		category: "𝗕𝗢𝗫 𝗖𝗛𝗔𝗧",
 		guide: {
-			en: "   {pn} avt [on | off]\n   {pn} name [on | off]\n   {pn} nc [on | off]\n   {pn} theme [on | off]\n   {pn} emoji [on | off]"
+			en: "   {pn} avt [on | off]\n   {pn} name [on | off]\n   {pn} nc [on | off]"
 		}
 	},
 
@@ -22,8 +22,6 @@ module.exports = {
 		const status = args[1]?.toLowerCase();
 
 		if (!["on", "off"].includes(status)) return;
-
-		// دعم اختصار nc للكنيات
 		if (option === "nc") option = "nickname";
 
 		const { threadID, messageID } = event;
@@ -36,7 +34,7 @@ module.exports = {
 				dataAntiChangeInfoBox[key] = data;
 
 			await threadsData.set(threadID, dataAntiChangeInfoBox, "data.antiChangeInfoBox");
-			// التفاعل بالإيموجي المطلوب عند التشغيل أو الإيقاف 🥴
+			// التفاعل بالإيموجي عند التفعيل أو الإيقاف
 			api.setMessageReaction("🥴", messageID, () => {}, true);
 		}
 
@@ -55,18 +53,10 @@ module.exports = {
 				break;
 			}
 			case "nickname": {
+				// --- العودة للمنطق الأصلي تماماً لسحب الكنيات ---
 				const { members } = await threadsData.get(threadID);
-				await checkAndSaveData("nickname", members.map(user => ({ [user.userID]: user.nickname })).reduce((a, b) => ({ ...a, ...b }), {}));
-				break;
-			}
-			case "theme": {
-				const { threadThemeID } = await threadsData.get(threadID);
-				await checkAndSaveData("theme", threadThemeID);
-				break;
-			}
-			case "emoji": {
-				const { emoji } = await threadsData.get(threadID);
-				await checkAndSaveData("emoji", emoji);
+				const originalNicknames = members.map(user => ({ [user.userID]: user.nickname })).reduce((a, b) => ({ ...a, ...b }), {});
+				await checkAndSaveData("nickname", originalNicknames);
 				break;
 			}
 			default: return;
@@ -77,66 +67,48 @@ module.exports = {
 		const { threadID, logMessageType, logMessageData, author } = event;
 		const botID = api.getCurrentUserID();
 
-		// العمل بصمت تام (حذف جميع الردود النصية message.reply)
+		// لا نتدخل إذا كان المغير هو البوت
+		if (author === botID) return;
+
+		const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
+
 		switch (logMessageType) {
 			case "log:thread-image": {
-				const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
 				if (!dataAntiChange.avatar) return;
-				return async function () {
-					if (role < 1 && botID !== author) {
-						api.changeGroupImage(await getStreamFromURL(dataAntiChange.avatar), threadID);
-					} else {
-						const imageSrc = logMessageData.url;
-						if (!imageSrc) return await threadsData.set(threadID, "REMOVE", "data.antiChangeInfoBox.avatar");
-						const newImageSrc = await uploadImgbb(imageSrc);
-						await threadsData.set(threadID, newImageSrc.image.url, "data.antiChangeInfoBox.avatar");
+				if (role < 1) {
+					api.changeGroupImage(await getStreamFromURL(dataAntiChange.avatar), threadID);
+				} else {
+					const imageSrc = logMessageData.url;
+					if (imageSrc) {
+						const newImg = await uploadImgbb(imageSrc);
+						await threadsData.set(threadID, newImg.image.url, "data.antiChangeInfoBox.avatar");
 					}
-				};
+				}
+				break;
 			}
 			case "log:thread-name": {
-				const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
 				if (!dataAntiChange.hasOwnProperty("name")) return;
-				return async function () {
-					if (role < 1 && botID !== author) {
-						api.setTitle(dataAntiChange.name, threadID);
-					} else {
-						await threadsData.set(threadID, logMessageData.name, "data.antiChangeInfoBox.name");
-					}
-				};
+				if (role < 1) {
+					api.setTitle(dataAntiChange.name, threadID);
+				} else {
+					await threadsData.set(threadID, logMessageData.name, "data.antiChangeInfoBox.name");
+				}
+				break;
 			}
 			case "log:user-nickname": {
-				const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
+				// --- العودة للمنطق الأصلي تماماً لإرجاع الكنية ---
 				if (!dataAntiChange.hasOwnProperty("nickname")) return;
-				return async function () {
-					const { nickname, participant_id } = logMessageData;
-					if (role < 1 && botID !== author) {
-						api.changeNickname(dataAntiChange.nickname[participant_id] || "", threadID, participant_id);
-					} else {
-						await threadsData.set(threadID, nickname, `data.antiChangeInfoBox.nickname.${participant_id}`);
-					}
-				};
-			}
-			case "log:thread-color": {
-				const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
-				if (!dataAntiChange.hasOwnProperty("theme")) return;
-				return async function () {
-					if (role < 1 && botID !== author) {
-						api.changeThreadColor(dataAntiChange.theme || "196241301102133", threadID);
-					} else {
-						await threadsData.set(threadID, logMessageData.theme_id, "data.antiChangeInfoBox.theme");
-					}
-				};
-			}
-			case "log:thread-icon": {
-				const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
-				if (!dataAntiChange.hasOwnProperty("emoji")) return;
-				return async function () {
-					if (role < 1 && botID !== author) {
-						api.changeThreadEmoji(dataAntiChange.emoji, threadID);
-					} else {
-						await threadsData.set(threadID, logMessageData.thread_icon, "data.antiChangeInfoBox.emoji");
-					}
-				};
+				const { nickname, participant_id } = logMessageData;
+
+				if (role < 1) {
+					// إرجاع الكنية من القاموس الأصلي المحفوظ
+					const oldNick = dataAntiChange.nickname[participant_id] || "";
+					api.changeNickname(oldNick, threadID, participant_id);
+				} else {
+					// تحديث الكنية الجديدة في قاعدة البيانات إذا غيرها الأدمن
+					await threadsData.set(threadID, nickname, `data.antiChangeInfoBox.nickname.${participant_id}`);
+				}
+				break;
 			}
 		}
 	}
