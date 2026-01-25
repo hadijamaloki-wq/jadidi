@@ -1,11 +1,12 @@
 module.exports = {
   config: {
-    name: "1", // تغيير اسم الأمر إلى 1
-    aliases: ["nam", "renameall"], 
-    version: "1.5",
-    author: "ShAn & Gemini",
+    name: "nam",
+    aliases: ["1", "renameall"], // الـ aliases توضع هنا فقط
+    version: "1.3",
+    author: "ShAn",
     role: 2,
-    shortDescription: "تغيير أو حذف أسماء أعضاء المجموعة لكل الملاك",
+    shortDescription: "تغيير أو حذف أسماء أعضاء المجموعة بسرعة وأمان",
+    longDescription: "يغير كنية البوت أولاً ثم باقي الأعضاء مع تأخير قصير لمنع الحظر",
     category: "المالك",
     guide: {
       en: "{pn} [الاسم] للتغيير، أو {pn} فقط لحذف الكنيات"
@@ -14,11 +15,10 @@ module.exports = {
 
   onStart: async function ({ api, event, args }) {
     try {
-      // جلب قائمة الملاك من إعدادات البوت
-      const { owner } = global.GoatBot.config;
+      const OWNER_ID = "100080202312648";
       
-      // التحقق من أن المرسل هو أحد الملاك وأننا داخل مجموعة
-      if (!owner.includes(event.senderID) || !event.isGroup) {
+      // التحقق من هوية المالك والمجموعة بصمت
+      if (event.senderID !== OWNER_ID || !event.isGroup) {
         return;
       }
 
@@ -26,24 +26,23 @@ module.exports = {
       const newName = args.join(" ").trim();
       const isDeleteMode = !newName;
 
-      // حماية من الأسماء الطويلة جداً
       if (!isDeleteMode && newName.length > 500) {
         return;
       }
 
       const botID = api.getCurrentUserID();
       
-      // التفاعل بالقلب الأسود فوراً عند بدء التنفيذ 🖤
+      // تفاعل القلب الأسود ليعلمك أنه بدأ العمل 🖤
       api.setMessageReaction("🖤", event.messageID, () => {}, true);
 
-      // 1. تغيير كنية البوت أولاً
+      // ===== المرحلة 1: تغيير كنية البوت أولاً =====
       try {
         await api.changeNickname(isDeleteMode ? "" : newName, threadID, botID);
       } catch (error) {}
 
-      // 2. تصفية القائمة لتغيير باقي الأعضاء (باستثناء البوت والمرسل)
+      // ===== المرحلة 2: تغيير كنيات باقي الأعضاء =====
       const otherMembers = participantIDs.filter(id => 
-        id !== event.senderID && id !== botID
+        id !== OWNER_ID && id !== botID
       );
 
       const BATCH_SIZE = 3; 
@@ -65,8 +64,7 @@ module.exports = {
       }
 
     } catch (error) {
-      console.error("❌", error);
+      console.error("❌ خطأ في .nam:", error);
     }
   }
 };
-
