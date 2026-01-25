@@ -39,8 +39,8 @@
     "notes": "القائمة البيضاء للمجموعات"
   },
   "database": {
-    "type": "mongodb",
-    "uriMongodb": "mongodb+srv://sirana5098:shan252@cluster0.afe4f.mongodb.net/unknown-v2?retryWrites=true&w=majority&appName=Cluster0",
+    "type": "json",
+    "uriMongodb": "",
     "autoSyncWhenStart": false,
     "autoRefreshThreadInfoFirstTime": true,
     "notes": "إعدادات قاعدة البيانات"
