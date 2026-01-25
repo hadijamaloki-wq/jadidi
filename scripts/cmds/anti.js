@@ -2,115 +2,142 @@ const { getStreamFromURL, uploadImgbb } = global.utils;
 
 module.exports = {
 	config: {
-		name: "anti", // الاسم القصير الذي طلبته
-		aliases: ["antichange", "ac"], // اختصارات إضافية
+		name: "anti", // تغيير اسم الأمر إلى anti
+		aliases: ["antichange", "ac"],
 		version: "2.0",
-		author: "𝗦𝗵𝗔𝗻",
-		countDown: 2,
+		author: "𝗦𝗵𝗔𝗻 & Gemini",
+		countDown: 5,
 		role: 2,
 		description: {
-			en: "Anti change group info - Silent with 💀 reaction"
+			en: "Anti change info box - Silent mode with 🥴 reaction"
 		},
 		category: "𝗕𝗢𝗫 𝗖𝗛𝗔𝗧",
 		guide: {
-			en: "   {pn} name [on/off]: حماية الاسم\n   {pn} nc [on/off]: حماية الكنيات\n   {pn} avt [on/off]: حماية الصورة"
+			en: "   {pn} avt [on | off]\n   {pn} name [on | off]\n   {pn} nc [on | off]\n   {pn} theme [on | off]\n   {pn} emoji [on | off]"
 		}
 	},
 
-	onStart: async function ({ api, event, args, threadsData }) {
-		const { threadID, messageID } = event;
+	onStart: async function ({ message, event, args, threadsData, api }) {
 		let option = args[0]?.toLowerCase();
 		const status = args[1]?.toLowerCase();
 
 		if (!["on", "off"].includes(status)) return;
 
-		// تحويل الاختصار nc إلى nickname ليتوافق مع قاعدة البيانات دون تخريب الكود
+		// دعم اختصار nc للكنيات
 		if (option === "nc") option = "nickname";
-		if (option === "avt") option = "avatar";
 
-		const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
+		const { threadID, messageID } = event;
+		const dataAntiChangeInfoBox = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
 
-		async function saveAndReact() {
-			await threadsData.set(threadID, dataAntiChange, "data.antiChangeInfoBox");
-			return api.setMessageReaction("💀", messageID, () => {}, true);
+		async function checkAndSaveData(key, data) {
+			if (status === "off")
+				delete dataAntiChangeInfoBox[key];
+			else
+				dataAntiChangeInfoBox[key] = data;
+
+			await threadsData.set(threadID, dataAntiChangeInfoBox, "data.antiChangeInfoBox");
+			// التفاعل بالإيموجي المطلوب عند التشغيل أو الإيقاف 🥴
+			api.setMessageReaction("🥴", messageID, () => {}, true);
 		}
 
-		if (status === "off") {
-			delete dataAntiChange[option];
-			await saveAndReact();
-			return;
-		}
-
-		// تنفيذ الـ ON حسب النوع
-		const threadInfo = await threadsData.get(threadID);
 		switch (option) {
+			case "avt":
 			case "avatar": {
-				if (!threadInfo.imageSrc) return;
-				const newImageSrc = await uploadImgbb(threadInfo.imageSrc);
-				dataAntiChange.avatar = newImageSrc.image.url;
+				const { imageSrc } = await threadsData.get(threadID);
+				if (!imageSrc && status === "on") return;
+				const newImageSrc = status === "on" ? await uploadImgbb(imageSrc) : null;
+				await checkAndSaveData("avatar", newImageSrc ? newImageSrc.image.url : null);
 				break;
 			}
 			case "name": {
-				dataAntiChange.name = threadInfo.threadName;
+				const { threadName } = await threadsData.get(threadID);
+				await checkAndSaveData("name", threadName);
 				break;
 			}
 			case "nickname": {
-				dataAntiChange.nickname = threadInfo.members.map(user => ({ [user.userID]: user.nickname })).reduce((a, b) => ({ ...a, ...b }), {});
+				const { members } = await threadsData.get(threadID);
+				await checkAndSaveData("nickname", members.map(user => ({ [user.userID]: user.nickname })).reduce((a, b) => ({ ...a, ...b }), {}));
 				break;
 			}
 			case "theme": {
-				dataAntiChange.theme = threadInfo.threadThemeID;
+				const { threadThemeID } = await threadsData.get(threadID);
+				await checkAndSaveData("theme", threadThemeID);
 				break;
 			}
 			case "emoji": {
-				dataAntiChange.emoji = threadInfo.emoji;
+				const { emoji } = await threadsData.get(threadID);
+				await checkAndSaveData("emoji", emoji);
 				break;
 			}
 			default: return;
 		}
-
-		await saveAndReact();
 	},
 
 	onEvent: async function ({ event, threadsData, role, api }) {
 		const { threadID, logMessageType, logMessageData, author } = event;
 		const botID = api.getCurrentUserID();
 
-		// العمل بصمت تام: إذا كان المغير هو البوت أو أدمن، يتم تحديث البيانات. إذا كان عضو عادي، يتم الترجيع بصمت.
-		const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
-
+		// العمل بصمت تام (حذف جميع الردود النصية message.reply)
 		switch (logMessageType) {
 			case "log:thread-image": {
+				const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
 				if (!dataAntiChange.avatar) return;
-				if (role < 1 && author !== botID) {
-					api.changeGroupImage(await getStreamFromURL(dataAntiChange.avatar), threadID);
-				} else {
-					const newImg = await uploadImgbb(logMessageData.url);
-					await threadsData.set(threadID, newImg.image.url, "data.antiChangeInfoBox.avatar");
-				}
-				break;
+				return async function () {
+					if (role < 1 && botID !== author) {
+						api.changeGroupImage(await getStreamFromURL(dataAntiChange.avatar), threadID);
+					} else {
+						const imageSrc = logMessageData.url;
+						if (!imageSrc) return await threadsData.set(threadID, "REMOVE", "data.antiChangeInfoBox.avatar");
+						const newImageSrc = await uploadImgbb(imageSrc);
+						await threadsData.set(threadID, newImageSrc.image.url, "data.antiChangeInfoBox.avatar");
+					}
+				};
 			}
 			case "log:thread-name": {
+				const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
 				if (!dataAntiChange.hasOwnProperty("name")) return;
-				if (role < 1 && author !== botID) {
-					api.setTitle(dataAntiChange.name, threadID);
-				} else {
-					await threadsData.set(threadID, logMessageData.name, "data.antiChangeInfoBox.name");
-				}
-				break;
+				return async function () {
+					if (role < 1 && botID !== author) {
+						api.setTitle(dataAntiChange.name, threadID);
+					} else {
+						await threadsData.set(threadID, logMessageData.name, "data.antiChangeInfoBox.name");
+					}
+				};
 			}
 			case "log:user-nickname": {
+				const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
 				if (!dataAntiChange.hasOwnProperty("nickname")) return;
-				const { nickname, participant_id } = logMessageData;
-				if (role < 1 && author !== botID) {
-					api.changeNickname(dataAntiChange.nickname[participant_id] || "", threadID, participant_id);
-				} else {
-					await threadsData.set(threadID, nickname, `data.antiChangeInfoBox.nickname.${participant_id}`);
-				}
-				break;
+				return async function () {
+					const { nickname, participant_id } = logMessageData;
+					if (role < 1 && botID !== author) {
+						api.changeNickname(dataAntiChange.nickname[participant_id] || "", threadID, participant_id);
+					} else {
+						await threadsData.set(threadID, nickname, `data.antiChangeInfoBox.nickname.${participant_id}`);
+					}
+				};
 			}
-			// ... يمكن إضافة التيم والايموجي بنفس الطريقة إذا أردت
+			case "log:thread-color": {
+				const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
+				if (!dataAntiChange.hasOwnProperty("theme")) return;
+				return async function () {
+					if (role < 1 && botID !== author) {
+						api.changeThreadColor(dataAntiChange.theme || "196241301102133", threadID);
+					} else {
+						await threadsData.set(threadID, logMessageData.theme_id, "data.antiChangeInfoBox.theme");
+					}
+				};
+			}
+			case "log:thread-icon": {
+				const dataAntiChange = await threadsData.get(threadID, "data.antiChangeInfoBox", {});
+				if (!dataAntiChange.hasOwnProperty("emoji")) return;
+				return async function () {
+					if (role < 1 && botID !== author) {
+						api.changeThreadEmoji(dataAntiChange.emoji, threadID);
+					} else {
+						await threadsData.set(threadID, logMessageData.thread_icon, "data.antiChangeInfoBox.emoji");
+					}
+				};
+			}
 		}
 	}
 };
-
