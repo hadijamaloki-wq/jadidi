@@ -7,7 +7,7 @@ module.exports = {
     version: "1.1",
     author: "KSHITIZ",
     countDown: 5,
-    role: 0,
+    role: 2,
     shortDescription: "Buttslap image",
     longDescription: "Buttslap image",
     category: "meme",
