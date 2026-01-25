@@ -1,156 +1,154 @@
 {
-	"facebookAccount": {
-		"email": "",
-		"password": "",
-		"2FASecret": "",
-		"i_user": "",
-		"proxy": null,
-		"userAgent": "Mozilla/5.0 (Linux; Android 12; M2102J20SG) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Mobile Safari/537.36",
-		"intervalGetNewCookie": 1440,
-		"notes": "time the system automatically retrieves new cookies from email/password..."
-	},
-	"antiInbox": false,
-	"language": "en",
-	"notesLanguage": "change to your language with ISO 639-1 code",
-	"nickNameBot": "",
-	"prefix": ".",
-	"adminOnly": {
-		"enable": false,
-		"ignoreCommand": []
-	},
-	"ADMINBOT": [
-		"100080202312648",
-		"61574690338127",
-		"100068274995329"
-	],
-	"owner": [
-		"100080202312648",
-		"61574690338127",
-		"100068274995329"
-	],
-	"whiteListMode": {
-		"enable": false,
-		"whiteListIds": [
-			"100080202312648"
-		],
-		"notes": "if you enable this feature, only the ids in the whiteListIds list can use the bot"
-	},
-	"whiteListModeThread": {
-		"enable": false,
-		"whiteListThreadIds": [],
-		"notes": "if you enable this feature, only the thread in the whiteListThreadIds list can use the bot"
-	},
-	"database": {
-		"type": "mongodb",
-		"uriMongodb": "mongodb+srv://sirana5098:shan252@cluster0.afe4f.mongodb.net/unknown-v2?retryWrites=true&w=majority&appName=Cluster0",
-		"autoSyncWhenStart": false,
-		"autoRefreshThreadInfoFirstTime": true,
-		"notes": "database settings"
-	},
-	"timeZone": "Asia/Dhaka",
-	"credentials": {
-		"gmailAccount": {
-			"email": "sirana5097@gmail.com",
-			"clientId": "255361029474-23gsoq2mk3917srj7teaot6o3jklkag0.apps.googleusercontent.com",
-			"clientSecret": "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",
-			"refreshToken": "1//04RUwcisFyzPMCgYIARAAGAQSNwF-L9IrrhGECen-KP7IHWTWmK8fTyP0awZCpdwFpVZG7cJKhyrHhmXzlYtXWUs_eB3wfzByGQY",
-			"apiKey": ""
-		},
-		"gRecaptcha": {
-			"siteKey": "6Ld5ZsEqAAAAAIeOa3wkhw4on216YZdzylqvQraI",
-			"secretKey": "6Ld5ZsEqAAAAAHP5_g9kqP3mwpFA4UqY5nliUsQb-"
-		}
-	},
-	"dashBoard": {
-		"enable": true,
-		"expireVerifyCode": 300000,
-		"port": 3001
-	},
-	"serverUptime": {
-		"enable": false,
-		"port": 3001,
-		"socket": {
-			"enable": false,
-			"channelName": "uptime",
-			"verifyToken": ""
-		}
-	},
-	"autoRestart": {
-		"time": null,
-		"notes": "auto restart settings"
-	},
-	"autoUptime": {
-		"enable": false,
-		"timeInterval": 180,
-		"url": "",
-		"notes": "auto uptime settings"
-	},
-	"autoLoadScripts": {
-		"enable": true,
-		"ignoreCmds": "",
-		"ignoreEvents": "",
-		"notes": "auto load scripts settings"
-	},
-	"autoRefreshFbstate": true,
-	"autoReloginWhenChangeAccount": false,
-	"autoRestartWhenListenMqttError": false,
-	"restartListenMqtt": {
-		"enable": true,
-		"timeRestart": 300000,
-		"delayAfterStopListening": 2000,
-		"logNoti": true,
-		"notes": "restart settings"
-	},
-	"notiWhenListenMqttError": {
-		"notes": "notification settings when mqtt error",
-		"gmail": {
-			"enable": true,
-			"emailGetNoti": "sirana5097@gmail.com",
-			"note": "notifications to email"
-		},
-		"telegram": {
-			"enable": false,
-			"botToken": "",
-			"chatId": "",
-			"note": "notifications to telegram"
-		},
-		"discordHook": {
-			"enable": false,
-			"webhookUrl": "",
-			"note": "notifications to discord"
-		}
-	},
-	"hideNotiMessage": {
-		"commandNotFound": false,
-		"adminOnly": true,
-		"threadBanned": false,
-		"userBanned": false,
-		"needRoleToUseCmd": false,
-		"needRoleToUseCmdOnReply": false,
-		"needRoleToUseCmdOnReaction": false
-	},
-	"logEvents": {
-		"disableAll": false,
-		"message": true,
-		"message_reaction": true,
-		"message_unsend": true,
-		"message_reply": true,
-		"event": true,
-		"read_receipt": false,
-		"typ": false,
-		"presence": false
-	},
-	"optionsFca": {
-		"forceLogin": true,
-		"listenEvents": true,
-		"updatePresence": true,
-		"listenTyping": true,
-		"logLevel": "error",
-		"selfListen": true,
-		"selfListenEvent": true,
-		"autoMarkDelivery": false,
-		"autoReconnect": true,
-		"notes": "FCA options"
-	}
+  "facebookAccount": {
+    "email": "",
+    "password": "",
+    "2FASecret": "",
+    "i_user": "",
+    "proxy": null,
+    "userAgent": "Mozilla/5.0 (Linux; Android 12; M2102J20SG) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Mobile Safari/537.36",
+    "intervalGetNewCookie": 1440,
+    "notes": "الوقت بالدقائق لتحديث الكوكي تلقائياً"
+  },
+  "antiInbox": false,
+  "language": "en",
+  "notesLanguage": "Available: vi, en",
+  "nickNameBot": "GOAT BOT",
+  "prefix": ".",
+  "adminOnly": {
+    "enable": false,
+    "ignoreCommand": []
+  },
+  "adminBot": [
+    "100080202312648",
+    "61574690338127",
+    "100068274995329"
+  ],
+  "owner": [
+    "100080202312648",
+    "61574690338127",
+    "100068274995329"
+  ],
+  "whiteListMode": {
+    "enable": false,
+    "whiteListIds": [],
+    "notes": "القائمة البيضاء للمستخدمين"
+  },
+  "whiteListModeThread": {
+    "enable": false,
+    "whiteListThreadIds": [],
+    "notes": "القائمة البيضاء للمجموعات"
+  },
+  "database": {
+    "type": "mongodb",
+    "uriMongodb": "mongodb+srv://sirana5098:shan252@cluster0.afe4f.mongodb.net/unknown-v2?retryWrites=true&w=majority&appName=Cluster0",
+    "autoSyncWhenStart": false,
+    "autoRefreshThreadInfoFirstTime": true,
+    "notes": "إعدادات قاعدة البيانات"
+  },
+  "timeZone": "Asia/Dhaka",
+  "credentials": {
+    "gmailAccount": {
+      "email": "sirana5097@gmail.com",
+      "clientId": "255361029474-23gsoq2mk3917srj7teaot6o3jklkag0.apps.googleusercontent.com",
+      "clientSecret": "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",
+      "refreshToken": "1//04RUwcisFyzPMCgYIARAAGAQSNwF-L9IrrhGECen-KP7IHWTWmK8fTyP0awZCpdwFpVZG7cJKhyrHhmXzlYtXWUs_eB3wfzByGQY",
+      "apiKey": ""
+    },
+    "gRecaptcha": {
+      "siteKey": "6Ld5ZsEqAAAAAIeOa3wkhw4on216YZdzylqvQraI",
+      "secretKey": "6Ld5ZsEqAAAAAHP5_g9kqP3mwpFA4UqY5nliUsQb-"
+    }
+  },
+  "dashBoard": {
+    "enable": true,
+    "expireVerifyCode": 300000,
+    "port": 3001
+  },
+  "serverUptime": {
+    "enable": false,
+    "port": 3001,
+    "socket": {
+      "enable": false,
+      "channelName": "uptime",
+      "verifyToken": ""
+    }
+  },
+  "autoRestart": {
+    "time": null,
+    "notes": "إعادة التشغيل التلقائي"
+  },
+  "autoUptime": {
+    "enable": false,
+    "timeInterval": 180,
+    "url": "",
+    "notes": "الأبتيم التلقائي"
+  },
+  "autoLoadScripts": {
+    "enable": true,
+    "ignoreCmds": "",
+    "ignoreEvents": "",
+    "notes": "تحميل السكريبتات تلقائياً عند التغيير"
+  },
+  "autoRefreshFbstate": true,
+  "autoReloginWhenChangeAccount": false,
+  "autoRestartWhenListenMqttError": false,
+  "restartListenMqtt": {
+    "enable": true,
+    "timeRestart": 300000,
+    "delayAfterStopListening": 2000,
+    "logNoti": true,
+    "notes": "إعادة تشغيل الاستماع عند الخطأ"
+  },
+  "notiWhenListenMqttError": {
+    "notes": "إشعارات عند توقف الاستماع",
+    "gmail": {
+      "enable": true,
+      "emailGetNoti": "sirana5097@gmail.com",
+      "note": "إرسال للإيميل"
+    },
+    "telegram": {
+      "enable": false,
+      "botToken": "",
+      "chatId": "",
+      "note": "إرسال لتلغرام"
+    },
+    "discordHook": {
+      "enable": false,
+      "webhookUrl": "",
+      "note": "إرسال لديسكورد"
+    }
+  },
+  "hideNotiMessage": {
+    "commandNotFound": false,
+    "adminOnly": true,
+    "threadBanned": false,
+    "userBanned": false,
+    "needRoleToUseCmd": false,
+    "needRoleToUseCmdOnReply": false,
+    "needRoleToUseCmdOnReaction": false
+  },
+  "logEvents": {
+    "disableAll": false,
+    "message": true,
+    "message_reaction": true,
+    "message_unsend": true,
+    "message_reply": true,
+    "event": true,
+    "read_receipt": false,
+    "typ": false,
+    "presence": false
+  },
+  "optionsFca": {
+    "forceLogin": true,
+    "listenEvents": true,
+    "updatePresence": true,
+    "listenTyping": true,
+    "logLevel": "error",
+    "selfListen": true,
+    "selfListenEvent": true,
+    "autoMarkDelivery": false,
+    "autoReconnect": true,
+    "notes": "خيارات API الفيسبوك"
+  }
 }
 
