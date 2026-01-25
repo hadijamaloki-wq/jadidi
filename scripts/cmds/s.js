@@ -4,10 +4,10 @@ if (!global.s_loops) global.s_loops = {};
 module.exports.config = {
   name: "s",
   aliases: ["s", "نيڪمو"],
-  version: "2.0.0",
+  version: "2.1.0",
   author: "Hanji & Gemini",
-  role: 2, // للمسؤولين فقط لتجنب الحظر
-  description: { en: "إرسال رسالة متكررة بفاصل زمني محدد" },
+  role: 2, 
+  description: { en: "إرسال رسالة متكررة بفاصل زمني محدد مع تفاعل صامت" },
   category: "tools",
   guide: {
     en: "{pn} [المدة بالثواني] [الرسالة] - لبدء الإرسال\n{pn} off - لإيقاف الإرسال"
@@ -23,9 +23,10 @@ module.exports.onStart = async ({ api, event, args }) => {
     if (global.s_loops[threadID]) {
       clearInterval(global.s_loops[threadID]);
       delete global.s_loops[threadID];
-      return api.sendMessage("تم الإيقاف 『༗』", threadID, messageID);
+      // تفاعل الصح عند الإيقاف أيضاً ليكون العمل متسقاً
+      return api.setMessageReaction("✅", messageID, () => {}, true);
     }
-    return api.sendMessage("『♔︎』", threadID, messageID);
+    return;
   }
 
   // 2. تحليل الوقت والرسالة
@@ -33,41 +34,35 @@ module.exports.onStart = async ({ api, event, args }) => {
   let messageText;
 
   if (isNaN(delayInSeconds)) {
-    // إذا لم يكتب رقماً، نستخدم الافتراضي (15 ثانية) ونعتبر كل الكلام هو الرسالة
     delayInSeconds = 15;
     messageText = args.join(" ").trim();
   } else {
-    // إذا كتب رقماً، نأخذ باقي الأجزاء كرسالة
     messageText = args.slice(1).join(" ").trim();
   }
 
   // التحقق من وجود نص
-  if (!messageText) {
-    return api.sendMessage("❌ يرجى كتابة الرسالة التي تريد تكرارها بعد تحديد الوقت.\nمثال: .s 10 هلا بالشباب", threadID, messageID);
-  }
+  if (!messageText) return;
 
   // تحويل الثواني إلى ميلي ثانية
   const delayMs = delayInSeconds * 1000;
 
-  // منع السبام السريع جداً لحماية الحساب (أقل من ثانية واحدة غير مسموح)
-  if (delayMs < 1000) {
-    return api.sendMessage("🌚.", threadID, messageID);
-  }
+  // منع السبام القاتل (أقل من ثانية واحدة)
+  if (delayMs < 1000) return;
 
   // 3. مسح أي حلقة قديمة تعمل في نفس المجموعة
   if (global.s_loops[threadID]) clearInterval(global.s_loops[threadID]);
 
-  api.sendMessage(`✅ تم بدء الإرسال التلقائي كل ${delayInSeconds} ثانية.\n📝 الرسالة: "${messageText}"\n\nللإيقاف أرسل: .s off`, threadID);
+  // التفاعل بعلامة الصح ✅ بدلاً من إرسال رسالة بداية
+  api.setMessageReaction("✅", messageID, () => {}, true);
 
   // 4. بدء حلقة الإرسال
   global.s_loops[threadID] = setInterval(() => {
     api.sendMessage(messageText, threadID, (err) => {
       if (err) {
-        // إذا حدث خطأ (مثل حظر مؤقت)، يتم إيقاف الحلقة تلقائياً
+        // إذا حدث خطأ، يتم إيقاف الحلقة تلقائياً
         clearInterval(global.s_loops[threadID]);
         delete global.s_loops[threadID];
       }
     });
   }, delayMs);
 };
-
