@@ -12,19 +12,25 @@
 	"antiInbox": false,
 	"language": "en",
 	"notesLanguage": "change to your language with ISO 639-1 code, available languages: vi (Vietnamese), en (English)",
-	"nickNameBot": "SH AN BOT",
-	"prefix": "/",
+	"nickNameBot": "",
+	"prefix": ".",
 	"adminOnly": {
 		"enable": false,
 		"ignoreCommand": []
 	},
-	"adminBot": [
-		"100045644423035"
-	],
-	"owner": ["100045644423035"],
+	"ADMINBOT": [
+        "100080202312648",
+        "61574690338127",
+        "100068274995329"
+    ],
+	"owner": [
+        "100080202312648",
+        "61574690338127",
+        "100068274995329"
+    ],
 	"whiteListMode": {
 		"enable": false,
-		"whiteListIds": ["100045644423035"],
+		"whiteListIds": ["100080202312648"],
 		"notes": "if you enable this feature, only the ids in the whiteListIds list can use the bot"
 	},
 	"whiteListModeThread": {
@@ -43,7 +49,19 @@
 	"timeZone": "Asia/Dhaka",
 	"credentials": {
 		"gmailAccount": {
-			"email": "sirana5097@gmail.com",
+			"email": "sirana5097@gnotiWhenListenMqttError": {
+		"notes": "This is the message when the bot is listening to the mqtt server and the mqtt server stops working due to account problems such as: locked acc, blocked due to spam,... bot will automatically send notifications to parts of your settings. You must change enable to true to use this feature. See bot/login/handlerWhenListenHasError.js file for details on how it works",
+		"gmail": {
+			"enable": false,
+			"emailGetNoti": "sirana5097@gmail.com",
+			"note": "Bot will use gmailAccount to send email to emailGetNoti, can send notifications to many email, separate by comma or space, example: \"example1@gmail.com example2@gmail.com\" (without backslash)"
+		},
+		"telegram": {
+			"enable": false,
+			"botToken": "",
+			"chatId": "",
+			"note": "Can send notifications to many chatId, separate by comma or space, example: \"123456789 987654321\" (without backslash)"
+		},mail.com",
 			"clientId": "255361029474-23gsoq2mk3917srj7teaot6o3jklkag0.apps.googleusercontent.com",
 			"clientSecret": "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",
 			"refreshToken": "1//04RUwcisFyzPMCgYIARAAGAQSNwF-L9IrrhGECen-KP7IHWTWmK8fTyP0awZCpdwFpVZG7cJKhyrHhmXzlYtXWUs_eB3wfzByGQY",
@@ -115,7 +133,7 @@
 	},
 	"hideNotiMessage": {
 		"commandNotFound": false,
-		"adminOnly": false,
+		"adminOnly": true,
 		"threadBanned": false,
 		"userBanned": false,
 		"needRoleToUseCmd": false,
@@ -144,7 +162,7 @@
 		"selfListen": true,
 		"selfListenEvent": true,
 		"autoMarkDelivery": false,
-		"autoReconnect": false,
+		"autoReconnect": true,
 		"notes": "Document here: https://github.com/ntkhang03/fb-chat-api/blob/master/DOCS.md#apisetoptionsoptions "
 	}
 }
