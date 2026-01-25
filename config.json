@@ -12,7 +12,7 @@
   "antiInbox": false,
   "language": "en",
   "notesLanguage": "Available: vi, en",
-  "nickNameBot": "GOAT BOT",
+  "nickNameBot": "",
   "prefix": ".",
   "adminOnly": {
     "enable": false,
@@ -31,7 +31,7 @@
   "whiteListMode": {
     "enable": false,
     "whiteListIds": [],
-    "notes": "القائمة البيضاء للمستخدمين"
+    "notes": "القائمة اليضاء للمستخدمين"
   },
   "whiteListModeThread": {
     "enable": false,
