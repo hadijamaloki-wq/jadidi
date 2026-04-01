@@ -1,89 +1,111 @@
 const { getPrefix } = global.utils;
-const { commands } = global.GoatBot;
+const { commands, aliases } = global.GoatBot;
 
 module.exports = {
   config: {
     name: "help",
-    version: "1.2",
-    author: "Amin",
+    version: "2.0.0",
+    author: "Amine (𝐀𝐥𝐞𝐧)",
     countDown: 5,
     role: 0,
-    shortDescription: { en: "عرض قائمة الأوامر" },
-    longDescription: { en: "عرض قائمة الأوامر أو تفاصيل أمر معين" },
+    shortDescription: { en: "عرض قائمة الأوامر الأنيقة" },
+    longDescription: { en: "عرض قائمة كافة الأوامر المتوفرة في البوت بتنسيق عصري" },
     category: "info",
-    guide: { en: "{pn} أو {pn} [اسم الأمر]" },
+    guide: { en: "{pn} | {pn} <اسم الأمر>" },
   },
 
-  onStart: async function ({ message, args, event, threadsData }) {
+  onStart: async function ({ message, args, event, role }) {
     const { threadID } = event;
     const prefix = getPrefix(threadID);
 
+    // إذا لم يكتب المستخدم شيئاً بعد أمر help
     if (args.length === 0) {
-      let msg = `╭───────────────────────⭓\n`;
-      msg += `         قائمة الأوامر\n`;
-      msg += `╰───────────────────────⭓\n\n`;
+      const categories = {};
 
-      // 1. الأوامر العامة
-      msg += `   𝟭. الأوامر العامة\n`;
-      msg += `1. accept     2. all       3. boxinfo    4. help\n`;
-      msg += `5. menu       6. ping      7. prefix     8. rules\n`;
-      msg += `9. time       10. uptime\n\n`;
+      // تجميع الأوامر حسب الفئات مع مراعاة الصلاحيات
+      for (const [name, cmd] of commands) {
+        // تخطي الأوامر التي لا يملك المستخدم صلاحيتها
+        if (cmd.config.role > role) continue;
 
-      // 2. إدارة المجموعة
-      msg += `   𝟮. إدارة المجموعة\n`;
-      msg += `11. adduser   12. anti     13. antiout   14. ban\n`;
-      msg += `15. kick      16. onlyadminbox  17. setname   18. unsend\n`;
-      msg += `19. warn      20. filteruser\n\n`;
+        const category = cmd.config.category || "General";
+        if (!categories[category]) categories[category] = [];
+        categories[category].push(name);
+      }
 
-      // 3. الترفيه والألعاب
-      msg += `   𝟯. الترفيه والألعاب\n`;
-      msg += `21. akinator  22. ball     23. beauty    24. choose\n`;
-      msg += `25. daily     26. dhbc     27. dice      28. hug\n`;
-      msg += `29. kiss      30. pair     31. rps       32. slot\n`;
-      msg += `33. ttt\n\n`;
+      let msg = `─── ⋆⭐ **𝕮𝖍𝖔𝖈𝖔𝖑𝖆𝖙𝖊 𝕼𝖚𝖊𝖊𝖓** ⭐ ⋆ ───\n\n`;
 
-      // 4. الصور والوسائط
-      msg += `   𝟰. الصور والوسائط\n`;
-      msg += `34. affect    35. avatar   36. coverphoto  37. fbcover\n`;
-      msg += `38. gen       39. imagine  40. logo      41. meme\n`;
-      msg += `42. profile   43. searchimage  44. slap   45. trigger\n\n`;
+      for (const category in categories) {
+        const categoryUpper = category.toUpperCase();
+        const icon = getCategoryIcon(categoryUpper);
 
-      msg += `╰───────────────────────⭓\n`;
-      msg += `الإجمالي: ${commands.size} أمر متاح\n\n`;
-      msg += `أرسل ${prefix}help [اسم الأمر] لعرض التفاصيل\n`;
-      msg += `مثال: ${prefix}help pair\n\n`;
+        msg += `╭───────────━━━━━━━───╮\n`;
+        msg += `  ┃ ${icon} **${categoryUpper}**\n`;
+        msg += `  ┃ ───────────\n`;
 
-      // ────── معلومات البوت والمالك (كما طلبت) ──────
-      msg += `🫧 البوت • هه✌🏿✌🏿\n`;
-      msg += `🔹 المالك • Aɭɩɳꜞx ゅ\n`;
-      msg += `🔗 الحساب: https://www.facebook.com/profile.php?id=61578796876651`;
+        const sortedCmds = categories[category].sort();
+        // عرض الأوامر في أعمدة (3 لكل سطر) لتحسين التنسيق
+        for (let i = 0; i < sortedCmds.length; i += 3) {
+          const chunk = sortedCmds.slice(i, i + 3).map(c => `\`${c}\``).join(" • ");
+          msg += `  ┃ ◈ ${chunk}\n`;
+        }
+        msg += `╰───────────━━━━━━━───╯\n\n`;
+      }
 
-      await message.reply({ body: msg });
-      return;
+      msg += `┌─── ⋆ 👤 **𝗗𝗘𝗩𝗘𝗟𝗢𝗣𝗘𝗥 𝗜𝗡𝗙𝗢** ⋆ ───┐\n`;
+      msg += `      **Name:** Amine (𝐀𝐥𝐞𝐧)\n`;
+      msg += `      **Commands:** ${commands.size} Total\n`;
+      msg += `      **FB:** m.me/Sh4n.Dev1\n`;
+      msg += `└───────────────────────────┘\n\n`;
+      msg += `> 💡 اكتب \`${prefix}help [اسم الأمر]\` للتفاصيل.`;
+
+      return message.reply({ body: msg });
     }
 
-    // عرض تفاصيل أمر معين
+    // مساعدة أمر محدد
     const commandName = args[0].toLowerCase();
-    const command = commands.get(commandName) || commands.get(global.GoatBot.aliases.get(commandName));
+    const cmd = commands.get(commandName) || commands.get(aliases.get(commandName));
 
-    if (!command) {
-      return message.reply(`لم يتم العثور على الأمر "${commandName}"`);
+    if (!cmd) {
+      return message.reply(`❌ | لم أجد أمراً بهذا الاسم: "${commandName}"`);
     }
 
-    const config = command.config;
-    const roleText = config.role === 0 ? "الجميع" : config.role === 1 ? "إداريي المجموعة" : "مالك البوت";
+    // التحقق من صلاحية المستخدم للأمر قبل عرض التفاصيل
+    if (cmd.config.role > role) {
+      return message.reply(`⛔ | هذا الأمر مخصص لـ ${cmd.config.role === 1 ? "إداريي المجموعة" : "المطور"} فقط.`);
+    }
 
-    const response = `╭── اسم الأمر ───⭓\n` +
-      `│ ${config.name}\n` +
-      `├── المعلومات\n` +
-      `│ الوصف: ${config.longDescription?.en || config.shortDescription?.en || "لا يوجد وصف"}\n` +
-      `│ الإصدار: ${config.version || "1.0"}\n` +
-      `│ الصلاحية: ${roleText}\n` +
-      `│ المؤلف: ${config.author || "غير معروف"}\n` +
-      `├── الاستخدام\n` +
-      `│ \( {prefix} \){config.name}\n` +
+    const config = cmd.config;
+    const roleText = config.role === 0 ? "الجميع" : config.role === 1 ? "إداريي المجموعة" : "المطور فقط";
+    const guideText = config.guide?.en ? config.guide.en.replace(/\{pn\}/g, config.name) : "";
+
+    const helpDetail = `╭── ⟨ 📋 **DETAILS** ⟩ ───⭓\n` +
+      `│ 💠 **الاسم:** ${config.name}\n` +
+      `│ 💠 **الفئة:** ${config.category}\n` +
+      `│ 💠 **الوصف:** ${config.longDescription?.en || "لا يوجد وصف"}\n` +
+      `│ 💠 **الصلاحية:** ${roleText}\n` +
+      `│ 💠 **الانتظار:** ${config.countDown || 1} ثانية\n` +
+      `├── ⟨ 🚀 **USAGE** ⟩\n` +
+      `│ 💡 \`${prefix}${config.name} ${guideText}\`\n` +
       `╰━━━━━━━━━━━━━━❖`;
 
-    await message.reply(response);
+    await message.reply(helpDetail);
   },
 };
+
+// دالة لإضافة أيقونات تلقائية حسب الفئة
+function getCategoryIcon(category) {
+  const icons = {
+    "INFO": "ℹ️",
+    "BOX CHAT": "👥",
+    "OWNER": "🛡️",
+    "ADMIN": "👑",
+    "GAME": "🎮",
+    "FUN": "🎡",
+    "IMAGE": "🎨",
+    "ECONOMY": "💰",
+    "UTILITY": "🛠️",
+    "MEDIA": "🎬",
+    "GENERAL": "📁"
+  };
+  return icons[category] || "💠";
+                                                          }
