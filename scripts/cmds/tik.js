@@ -1,66 +1,70 @@
-const axios = require("axios");
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+async function getStreamFromURL(url) {
+  const response = await axios.get(url, { responseType: 'stream' });
+  return response.data;
+}
+
+async function fetchTikTokVideos(query) {
+  try {
+    const response = await axios.get(`https://lyric-search-neon.vercel.app/kshitız?keyword=${query}`);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
 
 module.exports = {
   config: {
-    name: "tik",
-    version: "1.0.3",
-    role: 0,
-    author: "AI & Vex",
-    description: "بحث وتحميل فيديوهات تيك توك مع تفاعلات إيموجي",
-    category: "وسائط",
-    guide: "{pn} [اسم الفيديو أو الرابط]",
-    countDown: 5
+    name: "anisearch",
+    aliases: [],
+    author: "Vex_kshitiz",
+    version: "1.0",
+    shortDescription: {
+      en: "get anime edit",
+    },
+    longDescription: {
+      en: "search for anime edits video",
+    },
+    category: "media",
+    guide: {
+      en: "{p}{n} [query]",
+    },
   },
-
   onStart: async function ({ api, event, args }) {
-    const searchQuery = args.join(" ");
-    
-    if (!searchQuery) {
-      return api.sendMessage("❌ يرجى كتابة اسم الفيديو أو وضع رابط.", event.threadID, event.messageID);
+     api.setMessageReaction("✨", event.messageID, (err) => {}, true);
+    const query = args.join(' ');
+    const modifiedQuery = `${query} anime edit`;
+
+    const videos = await fetchTikTokVideos(modifiedQuery);
+
+    if (!videos || videos.length === 0) {
+      api.sendMessage({ body: `${query} not found.` }, event.threadID, event.messageID);
+      return;
     }
 
-    // التفاعل بـ 👍🏿 لبدء العملية (الانتظار)
-    api.setMessageReaction("👍🏿", event.messageID, () => {}, true);
+    const selectedVideo = videos[Math.floor(Math.random() * videos.length)];
+    const videoUrl = selectedVideo.videoUrl;
+
+    if (!videoUrl) {
+      api.sendMessage({ body: 'Error: Video not found.' }, event.threadID, event.messageID);
+      return;
+    }
 
     try {
-      let videoUrl = "";
+      const videoStream = await getStreamFromURL(videoUrl);
 
-      // التحقق إذا كان الرابط مباشر أو بحث
-      if (searchQuery.includes("tiktok.com")) {
-        videoUrl = searchQuery;
-      } else {
-        const searchRes = await axios.get(`https://api.davidcyriltech.my.id/tiktoksearch?text=${encodeURIComponent(searchQuery)}`);
-        const results = searchRes.data.result;
-
-        if (!results || results.length === 0) {
-           api.setMessageReaction("❌", event.messageID, () => {}, true);
-           return api.sendMessage("❌ لم أجد أي نتائج.", event.threadID, event.messageID);
-        }
-        // اختيار فيديو عشوائي من النتائج
-        const randomVideo = results[Math.floor(Math.random() * Math.min(results.length, 5))];
-        videoUrl = randomVideo.url; 
-      }
-
-      // جلب رابط التحميل بدون علامة مائية
-      const dlRes = await axios.get(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(videoUrl)}`);
-      const finalVideoUrl = dlRes.data.video.noWatermark;
-
-      if (!finalVideoUrl) throw new Error("Link not found");
-
-      const stream = (await axios.get(finalVideoUrl, { responseType: "stream" })).data;
-      
-      // التفاعل بـ ✌🏿 عند إرسال الفيديو (النجاح)
-      api.setMessageReaction("✌🏿", event.messageID, () => {}, true);
-
-      return api.sendMessage({
-        attachment: stream
+      await api.sendMessage({
+        body: ``,
+        attachment: videoStream,
       }, event.threadID, event.messageID);
-
-    } catch (e) {
-      console.error(e);
-      // التفاعل بـ ❌ في حالة الخطأ
-      api.setMessageReaction("❌", event.messageID, () => {}, true);
-      return api.sendMessage("❌ حدث خطأ، حاول مرة أخرى.", event.threadID);
+    } catch (error) {
+      console.error(error);
+      api.sendMessage({ body: 'An error occurred while processing the video.\nPlease try again later.' }, event.threadID, event.messageID);
     }
-  }
+  },
 };
