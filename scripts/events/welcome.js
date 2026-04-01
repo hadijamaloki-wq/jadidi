@@ -1,144 +1,98 @@
 const { getTime, drive } = global.utils;
+
 if (!global.temp.welcomeEvent)
-	global.temp.welcomeEvent = {};
+    global.temp.welcomeEvent = {};
 
 module.exports = {
-	config: {
-		name: "welcome",
-		version: "1.7",
-		author: "NTKhang",
-		category: "events"
-	},
+    config: {
+        name: "welcome",
+        version: "1.8",
+        author: "Amin",
+        category: "events",
+        description: "رسالة ترحيب احترافية مع صور العضو + المضيف + الجروب"
+    },
 
-	langs: {
-		vi: {
-			session1: "sáng",
-			session2: "trưa",
-			session3: "chiều",
-			session4: "tối",
-			welcomeMessage: "Cảm ơn bạn đã mời tôi vào nhóm!\nPrefix bot: %1\nĐể xem danh sách lệnh hãy nhập: %1help",
-			multiple1: "bạn",
-			multiple2: "các bạn",
-			defaultWelcomeMessage: "Xin chào {userName}.\nChào mừng bạn đến với {boxName}.\nChúc bạn có buổi {session} vui vẻ!"
-		},
-		en: {
-			session1: "morning",
-			session2: "noon",
-			session3: "afternoon",
-			session4: "evening",
-			welcomeMessage: "Thank you for inviting me to the group!\nBot prefix: %1\nTo view the list of commands, please enter: %1help",
-			multiple1: "you",
-			multiple2: "you guys",
-			defaultWelcomeMessage: `Hello {userName}.\nWelcome {multiple} to the chat group: {boxName}\nHave a nice {session} 😊`
-		}
-	},
+    onStart: async ({ threadsData, message, event, api, usersData }) => {
+        if (event.logMessageType !== "log:subscribe") return;
 
-	onStart: async ({ threadsData, message, event, api, getLang }) => {
-		if (event.logMessageType == "log:subscribe")
-			return async function () {
-				// ⬇️⬇️⬇️ إعدادات التحكم ⬇️⬇️⬇️
-				const ENABLE_BOT_WELCOME = false; // false = لا ترسل رسالة ترحيب للبوت
-				const ENABLE_MEMBER_WELCOME = false; // false = لا ترسل رسالة ترحيب للأعضاء
-				// ⬆️⬆️⬆️ إعدادات التحكم ⬆️⬆️⬆️
-				
-				const hours = getTime("HH");
-				const { threadID } = event;
-				const { nickNameBot } = global.GoatBot.config;
-				const prefix = global.utils.getPrefix(threadID);
-				const dataAddedParticipants = event.logMessageData.addedParticipants;
-				
-				// إذا كان العضو الجديد هو البوت
-				if (dataAddedParticipants.some((item) => item.userFbId == api.getCurrentUserID())) {
-					if (nickNameBot)
-						api.changeNickname(nickNameBot, threadID, api.getCurrentUserID());
-					
-					// التحكم في رسالة البوت
-					if (ENABLE_BOT_WELCOME) {
-						return message.send(getLang("welcomeMessage", prefix));
-					} else {
-						return; // خروج بدون إرسال
-					}
-				}
-				
-				// التحكم في رسائل الأعضاء
-				if (!ENABLE_MEMBER_WELCOME) {
-					return; // خروج بدون إرسال رسائل للأعضاء
-				}
-				
-				// إذا وصلنا هنا، هذا يعني أن رسائل الأعضاء مفعلة
-				// ... باقي الكود الأصلي للأعضاء ...
-				if (!global.temp.welcomeEvent[threadID])
-					global.temp.welcomeEvent[threadID] = {
-						joinTimeout: null,
-						dataAddedParticipants: []
-					};
+        return async function () {
+            const { threadID, author } = event;
+            const addedParticipants = event.logMessageData.addedParticipants || [];
 
-				global.temp.welcomeEvent[threadID].dataAddedParticipants.push(...dataAddedParticipants);
-				clearTimeout(global.temp.welcomeEvent[threadID].joinTimeout);
+            // إذا كان البوت هو الذي تمت إضافته
+            if (addedParticipants.some(p => p.userFbId == api.getCurrentUserID())) {
+                api.changeNickname(global.GoatBot.config.nickNameBot || "أمين بوت", threadID, api.getCurrentUserID());
+                return message.send("✅ تم تفعيل البوت بنجاح في المجموعة!\n\nأرسل .menu لعرض الأوامر");
+            }
 
-				global.temp.welcomeEvent[threadID].joinTimeout = setTimeout(async function () {
-					const threadData = await threadsData.get(threadID);
-					if (threadData.settings.sendWelcomeMessage == false)
-						return;
-					const dataAddedParticipants = global.temp.welcomeEvent[threadID].dataAddedParticipants;
-					const dataBanned = threadData.data.banned_ban || [];
-					const threadName = threadData.threadName;
-					const userName = [],
-						mentions = [];
-					let multiple = false;
+            // تأخير بسيط لجمع البيانات
+            if (!global.temp.welcomeEvent[threadID]) {
+                global.temp.welcomeEvent[threadID] = {
+                    joinTimeout: null,
+                    dataAddedParticipants: []
+                };
+            }
 
-					if (dataAddedParticipants.length > 1)
-						multiple = true;
+            global.temp.welcomeEvent[threadID].dataAddedParticipants.push(...addedParticipants);
+            clearTimeout(global.temp.welcomeEvent[threadID].joinTimeout);
 
-					for (const user of dataAddedParticipants) {
-						if (dataBanned.some((item) => item.id == user.userFbId))
-							continue;
-						userName.push(user.fullName);
-						mentions.push({
-							tag: user.fullName,
-							id: user.userFbId
-						});
-					}
-					
-					if (userName.length == 0) return;
-					let { welcomeMessage = getLang("defaultWelcomeMessage") } =
-						threadData.data;
-					const form = {
-						mentions: welcomeMessage.match(/\{userNameTag\}/g) ? mentions : null
-					};
-					welcomeMessage = welcomeMessage
-						.replace(/\{userName\}|\{userNameTag\}/g, userName.join(", "))
-						.replace(/\{boxName\}|\{threadName\}/g, threadName)
-						.replace(
-							/\{multiple\}/g,
-							multiple ? getLang("multiple2") : getLang("multiple1")
-						)
-						.replace(
-							/\{session\}/g,
-							hours <= 10
-								? getLang("session1")
-								: hours <= 12
-									? getLang("session2")
-									: hours <= 18
-										? getLang("session3")
-										: getLang("session4")
-						);
+            global.temp.welcomeEvent[threadID].joinTimeout = setTimeout(async () => {
+                try {
+                    const threadData = await threadsData.get(threadID);
+                    if (threadData.settings.sendWelcomeMessage === false) return;
 
-					form.body = welcomeMessage;
+                    const dataAdded = global.temp.welcomeEvent[threadID].dataAddedParticipants;
+                    const threadName = threadData.threadName || "هذه المجموعة";
 
-					if (threadData.data.welcomeAttachment) {
-						const files = threadData.data.welcomeAttachment;
-						const attachments = files.reduce((acc, file) => {
-							acc.push(drive.getFile(file, "stream"));
-							return acc;
-						}, []);
-						form.attachment = (await Promise.allSettled(attachments))
-							.filter(({ status }) => status == "fulfilled")
-							.map(({ value }) => value);
-					}
-					message.send(form);
-					delete global.temp.welcomeEvent[threadID];
-				}, 1500);
-			};
-	}
+                    const mentions = [];
+                    const userNames = [];
+
+                    // جمع أسماء ومنشنات
+                    for (const user of dataAdded) {
+                        userNames.push(user.fullName);
+                        mentions.push({ tag: user.fullName, id: user.userFbId });
+                    }
+
+                    const addedByName = await usersData.getName(author);
+
+                    // ────── جلب الصور الثلاث ──────
+                    const attachments = [];
+
+                    // 1. صورة العضو الجديد (أول واحد)
+                    if (dataAdded[0]) {
+                        const img1 = `https://graph.facebook.com/${dataAdded[0].userFbId}/picture?width=512&height=512`;
+                        attachments.push(await global.utils.getStreamFromURL(img1).catch(() => null));
+                    }
+
+                    // 2. صورة الشخص الذي أضاف
+                    const imgAdder = `https://graph.facebook.com/${author}/picture?width=512&height=512`;
+                    attachments.push(await global.utils.getStreamFromURL(imgAdder).catch(() => null));
+
+                    // 3. صورة المجموعة
+                    if (threadData.imageSrc) {
+                        attachments.push(await global.utils.getStreamFromURL(threadData.imageSrc).catch(() => null));
+                    }
+
+                    const welcomeText = `🌟 مرحباً بكم في ${threadName} 🌟\n\n` +
+                                      `👤 العضو الجديد: ${userNames.join("، ")}\n` +
+                                      `👤 تمت الإضافة بواسطة: ${addedByName}\n\n` +
+                                      `نتمنى لكم وقتاً ممتعاً ومليئاً بالفائدة معنا 💕\n` +
+                                      `━━━━━━━━━━━━━━━`;
+
+                    const form = {
+                        body: welcomeText,
+                        mentions: mentions,
+                        attachment: attachments.filter(Boolean) // إزالة الصور الفاشلة
+                    };
+
+                    await message.send(form);
+
+                } catch (error) {
+                    console.log("خطأ في رسالة الترحيب:", error);
+                } finally {
+                    delete global.temp.welcomeEvent[threadID];
+                }
+            }, 1800); // تأخير 1.8 ثانية
+        };
+    }
 };
