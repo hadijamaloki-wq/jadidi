@@ -1,11 +1,10 @@
-```javascript
 const { getPrefix } = global.utils;
 const { commands, aliases } = global.GoatBot;
 
 module.exports = {
   config: {
     name: "help",
-    version: "2.0.0",
+    version: "2.0.1",
     author: "Amine (𝐀𝐥𝐞𝐧)",
     countDown: 5,
     role: 0,
@@ -52,20 +51,16 @@ module.exports = {
       return message.reply({ body: msg });
     }
 
-    // معالجة اسم الأمر: إزالة النقطة من البداية إن وجدت
+    // تم إزالة ميزة معالجة النقطة (startsWith)
     let commandName = args[0].toLowerCase();
-    if (commandName.startsWith('.')) {
-      commandName = commandName.slice(1);
-    }
 
-    // البحث عن الأمر في commands أو aliases
+    // البحث المباشر عن الأمر
     let cmd = commands.get(commandName) || commands.get(aliases.get(commandName));
 
     if (!cmd) {
       return message.reply(`❌ | لم أجد أمراً بهذا الاسم: "${args[0]}"`);
     }
 
-    // التحقق من الصلاحية
     if (cmd.config.role > role) {
       return message.reply(`⛔ | هذا الأمر مخصص لـ ${cmd.config.role === 1 ? "إداريي المجموعة" : "المطور"} فقط.`);
     }
@@ -73,7 +68,6 @@ module.exports = {
     const config = cmd.config;
     const roleText = config.role === 0 ? "الجميع" : config.role === 1 ? "إداريي المجموعة" : "المطور فقط (𝐀𝐥𝐞𝐧)";
 
-    // جلب الوصف بالعربية مع أولوية للوصف الطويل ثم القصير
     let description = "لا يوجد شرح متوفر لهذا الأمر حالياً.";
     if (config.longDescription && config.longDescription.ar) {
       description = config.longDescription.ar;
@@ -85,7 +79,6 @@ module.exports = {
       description = config.shortDescription.en;
     }
 
-    // تحضير نص الاستخدام
     const guideText = config.guide?.en ? config.guide.en.replace(/\{pn\}/g, config.name) : "لا يوجد دليل استخدام.";
     const finalGuide = guideText.trim() ? guideText : config.name;
 
@@ -120,4 +113,3 @@ function getCategoryIcon(category) {
   };
   return icons[category] || "💠";
 }
-```
