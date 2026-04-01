@@ -1,3 +1,4 @@
+```javascript
 const { getPrefix } = global.utils;
 const { commands, aliases } = global.GoatBot;
 
@@ -18,32 +19,23 @@ module.exports = {
     const { threadID } = event;
     const prefix = getPrefix(threadID);
 
-    // إذا لم يكتب المستخدم شيئاً بعد أمر help
     if (args.length === 0) {
       const categories = {};
-
-      // تجميع الأوامر حسب الفئات مع مراعاة الصلاحيات
       for (const [name, cmd] of commands) {
-        // تخطي الأوامر التي لا يملك المستخدم صلاحيتها
         if (cmd.config.role > role) continue;
-
         const category = cmd.config.category || "General";
         if (!categories[category]) categories[category] = [];
         categories[category].push(name);
       }
 
       let msg = `─── ⋆⭐ **𝕮𝖍𝖔𝖈𝖔𝖑𝖆𝖙𝖊 𝕼𝖚𝖊𝖊𝖓** ⭐ ⋆ ───\n\n`;
-
       for (const category in categories) {
         const categoryUpper = category.toUpperCase();
         const icon = getCategoryIcon(categoryUpper);
-
         msg += `╭───────────━━━━━━━───╮\n`;
         msg += `  ┃ ${icon} **${categoryUpper}**\n`;
         msg += `  ┃ ───────────\n`;
-
         const sortedCmds = categories[category].sort();
-        // عرض الأوامر في أعمدة (3 لكل سطر) لتحسين التنسيق
         for (let i = 0; i < sortedCmds.length; i += 3) {
           const chunk = sortedCmds.slice(i, i + 3).map(c => `\`${c}\``).join(" • ");
           msg += `  ┃ ◈ ${chunk}\n`;
@@ -57,42 +49,61 @@ module.exports = {
       msg += `      **FB:** m.me/Sh4n.Dev1\n`;
       msg += `└───────────────────────────┘\n\n`;
       msg += `> 💡 اكتب \`${prefix}help [اسم الأمر]\` للتفاصيل.`;
-
       return message.reply({ body: msg });
     }
 
-    // مساعدة أمر محدد
-    const commandName = args[0].toLowerCase();
-    const cmd = commands.get(commandName) || commands.get(aliases.get(commandName));
-
-    if (!cmd) {
-      return message.reply(`❌ | لم أجد أمراً بهذا الاسم: "${commandName}"`);
+    // معالجة اسم الأمر: إزالة النقطة من البداية إن وجدت
+    let commandName = args[0].toLowerCase();
+    if (commandName.startsWith('.')) {
+      commandName = commandName.slice(1);
     }
 
-    // التحقق من صلاحية المستخدم للأمر قبل عرض التفاصيل
+    // البحث عن الأمر في commands أو aliases
+    let cmd = commands.get(commandName) || commands.get(aliases.get(commandName));
+
+    if (!cmd) {
+      return message.reply(`❌ | لم أجد أمراً بهذا الاسم: "${args[0]}"`);
+    }
+
+    // التحقق من الصلاحية
     if (cmd.config.role > role) {
       return message.reply(`⛔ | هذا الأمر مخصص لـ ${cmd.config.role === 1 ? "إداريي المجموعة" : "المطور"} فقط.`);
     }
 
     const config = cmd.config;
-    const roleText = config.role === 0 ? "الجميع" : config.role === 1 ? "إداريي المجموعة" : "المطور فقط";
-    const guideText = config.guide?.en ? config.guide.en.replace(/\{pn\}/g, config.name) : "";
+    const roleText = config.role === 0 ? "الجميع" : config.role === 1 ? "إداريي المجموعة" : "المطور فقط (𝐀𝐥𝐞𝐧)";
 
-    const helpDetail = `╭── ⟨ 📋 **DETAILS** ⟩ ───⭓\n` +
+    // جلب الوصف بالعربية مع أولوية للوصف الطويل ثم القصير
+    let description = "لا يوجد شرح متوفر لهذا الأمر حالياً.";
+    if (config.longDescription && config.longDescription.ar) {
+      description = config.longDescription.ar;
+    } else if (config.longDescription && config.longDescription.en) {
+      description = config.longDescription.en;
+    } else if (config.shortDescription && config.shortDescription.ar) {
+      description = config.shortDescription.ar;
+    } else if (config.shortDescription && config.shortDescription.en) {
+      description = config.shortDescription.en;
+    }
+
+    // تحضير نص الاستخدام
+    const guideText = config.guide?.en ? config.guide.en.replace(/\{pn\}/g, config.name) : "لا يوجد دليل استخدام.";
+    const finalGuide = guideText.trim() ? guideText : config.name;
+
+    const helpDetail = `╭── ⟨ 📋 **تفاصيل الأمر** ⟩ ───⭓\n` +
       `│ 💠 **الاسم:** ${config.name}\n` +
-      `│ 💠 **الفئة:** ${config.category}\n` +
-      `│ 💠 **الوصف:** ${config.longDescription?.en || "لا يوجد وصف"}\n` +
+      `│ 💠 **الفئة:** ${(config.category || "General").toUpperCase()}\n` +
+      `│ 💠 **الوصف:** ${description}\n` +
       `│ 💠 **الصلاحية:** ${roleText}\n` +
-      `│ 💠 **الانتظار:** ${config.countDown || 1} ثانية\n` +
-      `├── ⟨ 🚀 **USAGE** ⟩\n` +
-      `│ 💡 \`${prefix}${config.name} ${guideText}\`\n` +
-      `╰━━━━━━━━━━━━━━❖`;
+      `│ 💠 **وقت الانتظار:** ${config.countDown || 1} ثوانٍ\n` +
+      `├── ⟨ 🚀 **طريقة الاستخدام** ⟩\n` +
+      `│ 💡 \`${prefix}${finalGuide}\`\n` +
+      `╰━━━━━━━━━━━━━━❖\n` +
+      `✍️ بـقـلـم: **${config.author || "𝐀𝐥𝐞𝐧"}**`;
 
     await message.reply(helpDetail);
   },
 };
 
-// دالة لإضافة أيقونات تلقائية حسب الفئة
 function getCategoryIcon(category) {
   const icons = {
     "INFO": "ℹ️",
@@ -108,4 +119,5 @@ function getCategoryIcon(category) {
     "GENERAL": "📁"
   };
   return icons[category] || "💠";
-                                                          }
+}
+```
