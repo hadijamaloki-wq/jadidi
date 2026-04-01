@@ -1,145 +1,89 @@
-const fs = require("fs-extra");
-const axios = require("axios");
-const path = require("path");
 const { getPrefix } = global.utils;
-const { commands, aliases } = global.GoatBot;
+const { commands } = global.GoatBot;
 
 module.exports = {
   config: {
     name: "help",
-    version: "1.18",
-    author: "ShAn", 
+    version: "1.2",
+    author: "Amin",
     countDown: 5,
     role: 0,
-    shortDescription: {
-      en: "View command usage",
-    },
-    longDescription: {
-      en: "View command usage and list all commands or commands by category",
-    },
+    shortDescription: { en: "عرض قائمة الأوامر" },
+    longDescription: { en: "عرض قائمة الأوامر أو تفاصيل أمر معين" },
     category: "info",
-    guide: {
-      en: "{pn} / help cmdName\n{pn} -c <categoryName>",
-    },
-    priority: 1,
+    guide: { en: "{pn} أو {pn} [اسم الأمر]" },
   },
 
-  onStart: async function ({ message, args, event, threadsData, role }) {
+  onStart: async function ({ message, args, event, threadsData }) {
     const { threadID } = event;
-    const threadData = await threadsData.get(threadID);
     const prefix = getPrefix(threadID);
 
     if (args.length === 0) {
-      const categories = {};
-      let msg = "";
+      let msg = `╭───────────────────────⭓\n`;
+      msg += `         قائمة الأوامر\n`;
+      msg += `╰───────────────────────⭓\n\n`;
 
-      msg += `╔══════════════╗\n🔹 COMMAND LIST 🔹\n╚══════════════╝\n`;
+      // 1. الأوامر العامة
+      msg += `   𝟭. الأوامر العامة\n`;
+      msg += `1. accept     2. all       3. boxinfo    4. help\n`;
+      msg += `5. menu       6. ping      7. prefix     8. rules\n`;
+      msg += `9. time       10. uptime\n\n`;
 
-      for (const [name, value] of commands) {
-        if (value.config.role > 1 && role < value.config.role) continue;
+      // 2. إدارة المجموعة
+      msg += `   𝟮. إدارة المجموعة\n`;
+      msg += `11. adduser   12. anti     13. antiout   14. ban\n`;
+      msg += `15. kick      16. onlyadminbox  17. setname   18. unsend\n`;
+      msg += `19. warn      20. filteruser\n\n`;
 
-        const category = value.config.category || "Uncategorized";
-        categories[category] = categories[category] || { commands: [] };
-        categories[category].commands.push(name);
-      }
+      // 3. الترفيه والألعاب
+      msg += `   𝟯. الترفيه والألعاب\n`;
+      msg += `21. akinator  22. ball     23. beauty    24. choose\n`;
+      msg += `25. daily     26. dhbc     27. dice      28. hug\n`;
+      msg += `29. kiss      30. pair     31. rps       32. slot\n`;
+      msg += `33. ttt\n\n`;
 
-      Object.keys(categories).forEach((category) => {
-        if (category !== "info") {
-          msg += `\n╭────────────⭓\n│『 ${category.toUpperCase()} 』`;
+      // 4. الصور والوسائط
+      msg += `   𝟰. الصور والوسائط\n`;
+      msg += `34. affect    35. avatar   36. coverphoto  37. fbcover\n`;
+      msg += `38. gen       39. imagine  40. logo      41. meme\n`;
+      msg += `42. profile   43. searchimage  44. slap   45. trigger\n\n`;
 
-          const names = categories[category].commands.sort();
-          names.forEach((item) => {
-            msg += `\n│💠${item}💠`;
-          });
+      msg += `╰───────────────────────⭓\n`;
+      msg += `الإجمالي: ${commands.size} أمر متاح\n\n`;
+      msg += `أرسل ${prefix}help [اسم الأمر] لعرض التفاصيل\n`;
+      msg += `مثال: ${prefix}help pair\n\n`;
 
-          msg += `\n╰────────⭓`;
-        }
-      });
+      // ────── معلومات البوت والمالك (كما طلبت) ──────
+      msg += `🫧 البوت • هه✌🏿✌🏿\n`;
+      msg += `🔹 المالك • Aɭɩɳꜞx ゅ\n`;
+      msg += `🔗 الحساب: https://www.facebook.com/profile.php?id=61578796876651`;
 
-      const totalCommands = commands.size;
-      msg += `\n𝗖𝘂𝗿𝗿𝗲𝗻𝘁𝗹𝘆, 𝘁𝗵𝗲 𝗯𝗼𝘁 𝗵𝗮𝘀 ${totalCommands} 𝗰𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝘁𝗵𝗮𝘁 𝗰𝗮𝗻 𝗯𝗲 𝘂𝘀𝗲𝗱\n`;
-      msg += `\n𝗧𝘆𝗽𝗲 ${prefix}𝗵𝗲𝗹𝗽 𝗰𝗺𝗱𝗡𝗮𝗺𝗲 𝘁𝗼 𝘃𝗶𝗲𝘄 𝘁𝗵𝗲 𝗱𝗲𝘁𝗮𝗶𝗹𝘀 𝗼𝗳 𝘁𝗵𝗮𝘁 𝗰𝗼𝗺𝗺𝗮𝗻𝗱\n`;
-      msg += `\n🫧𝘽𝙊𝙏 𝙉𝘼𝙈𝙀🫧: ♡𝕮𝖍𝖔𝖈𝖔𝖑𝖆𝖙𝖊 𝕼𝖚𝖊𝖊𝖓♡`;
-      msg += `\n🔹 𝘽𝙊𝙏 𝙊𝙒𝙉𝙀𝙍 🔹`;
-      msg += `\n 	 					`;
-      msg += `\n~𝙉𝘼𝙈𝙀:✰ '𝗘𝘄'𝗿 𝗦𝗵𝗔𝗻'𝘀 ✰`;
-      msg += `\n~𝙁𝘽: m.me/Sh4n.Dev1`;
-
-      await message.reply({
-        body: msg,
-      });
-    } else if (args[0] === "-c") {
-      if (!args[1]) {
-        await message.reply("Please specify a category name.");
-        return;
-      }
-
-      const categoryName = args[1].toLowerCase();
-      const filteredCommands = Array.from(commands.values()).filter(
-        (cmd) => cmd.config.category?.toLowerCase() === categoryName
-      );
-
-      if (filteredCommands.length === 0) {
-        await message.reply(`No commands found in the category "${categoryName}".`);
-        return;
-      }
-
-      let msg = `╔══════════════╗\n🔹 ${categoryName.toUpperCase()} COMMANDS 🔹\n╚══════════════╝\n`;
-
-      filteredCommands.forEach((cmd) => {
-        msg += `\n💠 ${cmd.config.name} 💠`;
-      });
-
-      await message.reply(msg);
-    } else {
-      const commandName = args[0].toLowerCase();
-      const command = commands.get(commandName) || commands.get(aliases.get(commandName));
-
-      if (!command) {
-        await message.reply(`Command "${commandName}" not found.`);
-      } else {
-        const configCommand = command.config;
-        const roleText = roleTextToString(configCommand.role);
-        const author = configCommand.author || "Unknown";
-
-        const longDescription = configCommand.longDescription
-          ? configCommand.longDescription.en || "No description"
-          : "No description";
-
-        const guideBody = configCommand.guide?.en || "No guide available.";
-        const usage = guideBody.replace(/{p}/g, prefix).replace(/{n}/g, configCommand.name);
-
-        const response = `╭── NAME ────⭓\n` +
-          `│ ${configCommand.name}\n` +
-          `├── INFO\n` +
-          `│ Description: ${longDescription}\n` +
-          `│ Other names: ${configCommand.aliases ? configCommand.aliases.join(", ") : "Do not have"}\n` +
-          `│ Version: ${configCommand.version || "1.0"}\n` +
-          `│ Role: ${roleText}\n` +
-          `│ Time per command: ${configCommand.countDown || 1}s\n` +
-          `│ Author: ${author}\n` +
-          `├── Usage\n` +
-          `│ ${usage}\n` +
-          `├── Notes\n` +
-          `│ The content inside <ShAn> can be changed\n` +
-          `│ The content inside [a|b|c] is a or b or c\n` +
-          `╰━━━━━━━❖`;
-
-        await message.reply(response);
-      }
+      await message.reply({ body: msg });
+      return;
     }
+
+    // عرض تفاصيل أمر معين
+    const commandName = args[0].toLowerCase();
+    const command = commands.get(commandName) || commands.get(global.GoatBot.aliases.get(commandName));
+
+    if (!command) {
+      return message.reply(`لم يتم العثور على الأمر "${commandName}"`);
+    }
+
+    const config = command.config;
+    const roleText = config.role === 0 ? "الجميع" : config.role === 1 ? "إداريي المجموعة" : "مالك البوت";
+
+    const response = `╭── اسم الأمر ───⭓\n` +
+      `│ ${config.name}\n` +
+      `├── المعلومات\n` +
+      `│ الوصف: ${config.longDescription?.en || config.shortDescription?.en || "لا يوجد وصف"}\n` +
+      `│ الإصدار: ${config.version || "1.0"}\n` +
+      `│ الصلاحية: ${roleText}\n` +
+      `│ المؤلف: ${config.author || "غير معروف"}\n` +
+      `├── الاستخدام\n` +
+      `│ \( {prefix} \){config.name}\n` +
+      `╰━━━━━━━━━━━━━━❖`;
+
+    await message.reply(response);
   },
 };
-
-function roleTextToString(roleText) {
-  switch (roleText) {
-    case 0:
-      return "0 (All users)";
-    case 1:
-      return "1 (Group administrators)";
-    case 2:
-      return "2 (Admin bot)";
-    default:
-      return "Unknown role";
-  }
-    }
