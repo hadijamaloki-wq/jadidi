@@ -4,7 +4,7 @@ const { commands, aliases } = global.GoatBot;
 module.exports = {
   config: {
     name: "help",
-    version: "2.0.1",
+    version: "2.0.2",
     author: "Amine (𝐀𝐥𝐞𝐧)",
     countDown: 5,
     role: 0,
@@ -51,15 +51,18 @@ module.exports = {
       return message.reply({ body: msg });
     }
 
-    // تم إزالة ميزة معالجة النقطة (startsWith)
-    let commandName = args[0].toLowerCase();
+    // --- تعديل ذكي لمنع الخطأ الذي ظهر لك ---
+    let input = args[0].toLowerCase();
+    // إذا بدأ المستخدم البحث بنقطة مثل (.help .rank) سنبحث عن (rank)
+    // وإذا بحث بدون نقطة (.help rank) سنبحث أيضاً عن (rank)
+    let commandName = input.startsWith(prefix) ? input.slice(prefix.length) : input;
 
-    // البحث المباشر عن الأمر
     let cmd = commands.get(commandName) || commands.get(aliases.get(commandName));
 
     if (!cmd) {
-      return message.reply(`❌ | لم أجد أمراً بهذا الاسم: "${args[0]}"`);
+      return message.reply(`❌ | العفو يا أمين، لم أجد أمراً باسم: "${commandName}"`);
     }
+    // ----------------------------------------
 
     if (cmd.config.role > role) {
       return message.reply(`⛔ | هذا الأمر مخصص لـ ${cmd.config.role === 1 ? "إداريي المجموعة" : "المطور"} فقط.`);
@@ -80,8 +83,7 @@ module.exports = {
     }
 
     const guideText = config.guide?.en ? config.guide.en.replace(/\{pn\}/g, config.name) : "لا يوجد دليل استخدام.";
-    const finalGuide = guideText.trim() ? guideText : config.name;
-
+    
     const helpDetail = `╭── ⟨ 📋 **تفاصيل الأمر** ⟩ ───⭓\n` +
       `│ 💠 **الاسم:** ${config.name}\n` +
       `│ 💠 **الفئة:** ${(config.category || "General").toUpperCase()}\n` +
@@ -89,7 +91,7 @@ module.exports = {
       `│ 💠 **الصلاحية:** ${roleText}\n` +
       `│ 💠 **وقت الانتظار:** ${config.countDown || 1} ثوانٍ\n` +
       `├── ⟨ 🚀 **طريقة الاستخدام** ⟩\n` +
-      `│ 💡 \`${prefix}${finalGuide}\`\n` +
+      `│ 💡 \`${prefix}${guideText}\`\n` +
       `╰━━━━━━━━━━━━━━❖\n` +
       `✍️ بـقـلـم: **${config.author || "𝐀𝐥𝐞𝐧"}**`;
 
@@ -99,17 +101,9 @@ module.exports = {
 
 function getCategoryIcon(category) {
   const icons = {
-    "INFO": "ℹ️",
-    "BOX CHAT": "👥",
-    "OWNER": "🛡️",
-    "ADMIN": "👑",
-    "GAME": "🎮",
-    "FUN": "🎡",
-    "IMAGE": "🎨",
-    "ECONOMY": "💰",
-    "UTILITY": "🛠️",
-    "MEDIA": "🎬",
-    "GENERAL": "📁"
+    "INFO": "ℹ️", "BOX CHAT": "👥", "OWNER": "🛡️", "ADMIN": "👑",
+    "GAME": "🎮", "FUN": "🎡", "IMAGE": "🎨", "ECONOMY": "💰",
+    "UTILITY": "🛠️", "MEDIA": "🎬", "GENERAL": "📁"
   };
   return icons[category] || "💠";
 }
