@@ -3,52 +3,57 @@ const axios = require("axios");
 module.exports = {
   config: {
     name: "x",
-    version: "2.2.0",
-    author: "Amine (Alen) & Improved",
+    version: "3.0.0",
+    author: "Amine (Alen) & Custom Build",
     countDown: 2,
     role: 2,
-    shortDescription: { en: "حماية اسم وصورة الجروب بقوة" },
+    shortDescription: { en: "حماية شاملة للاسم والصورة مع إمكانية تعيين اسم" },
     category: "حماية",
-    guide: { en: ".x on | .x off" }
+    guide: { en: ".x on [الاسم الجديد] | .x off" }
   },
 
   onStart: async function ({ api, event, args, message }) {
     const { threadID } = event;
 
     if (args[0] === "on") {
-      try {
-        const info = await api.getThreadInfo(threadID);
-        let imageBuffer = null;
+      const customName = args.slice(1).join(" ");
+      if (!customName) return message.reply("💍 اكتب الاسم الجديد اللي تبيه ينحفظ، مثال:\n.x on جروب الأساطير");
 
-        // إذا توجد صورة، حمّلها كمخزن
-        if (info.imageSrc) {
-          try {
-            const res = await axios.get(info.imageSrc, { responseType: "arraybuffer" });
+      try {
+        // تغيير اسم الجروب للاسم اللي كتبته
+        await api.setTitle(customName, threadID);
+
+        // حفظ الصورة الحالية كمخزن (buffer)
+        let imageBuffer = null;
+        try {
+          const info = await api.getThreadInfo(threadID);
+          if (info.imageSrc) {
+            const res = await axios.get(info.imageSrc, { responseType: "arraybuffer", timeout: 10000 });
             imageBuffer = Buffer.from(res.data);
-          } catch (e) {
-            // فشل تحميل الصورة، سنخزن الرابط فقط كخيار ثانوي
           }
+        } catch (e) {
+          // إذا ما قدرنا نجيب الصورة، نخلي buffer فاضي
         }
 
         global.GoatBot.x_protect = global.GoatBot.x_protect || {};
         global.GoatBot.x_protect[threadID] = {
-          name: info.threadName || "Unnamed Group",
-          imageSrc: info.imageSrc || null,
-          imageBuffer: imageBuffer,  // المخزن الاحتياطي
+          name: customName,
+          imageBuffer: imageBuffer,
+          imageSrc: null // اختياري
         };
 
-        return message.reply("✅ تم تفعيل حماية الجروب الشاملة\n(الاسم والصورة)\nفقط المطور يقدر يغير.");
+        return message.reply(`✅ تم تعيين اسم الجروب المحمي: ${customName}\n🔒 الاسم والصورة مقفولين الآن.\nالمطور فقط يقدر يغيرهم.`);
       } catch (error) {
         return message.reply("❌ فشل تفعيل الحماية: " + error.message);
       }
     }
 
     if (args[0] === "off") {
-      if (global.GoatBot.x_protect?.[threadID]) {
-        delete global.GoatBot.x_protect[threadID];
-      }
-      return message.reply("✅ تم إيقاف حماية الجروب الشاملة.");
+      if (global.GoatBot.x_protect?.[threadID]) delete global.GoatBot.x_protect[threadID];
+      return message.reply("✅ تم إيقاف حماية الجروب.");
     }
+
+    return message.reply("يرجى استخدام: .x on <الاسم> | .x off");
   },
 
   onEvent: async function ({ api, event }) {
@@ -59,59 +64,49 @@ module.exports = {
     const botID = api.getCurrentUserID();
     if (author === botID) return;
 
-    const isBotAdmin = global.config.adminBot.includes(author);
+    const isBotAdmin = global.config.adminBot?.includes(author);
 
-    // ==================== حماية اسم الجروب ====================
-    // حدث تغيير الاسم (قد يختلف حسب المكتبة: thread_name أو log:thread-name)
+    // ================== حماية الاسم ==================
     if (logMessageType === "thread_name" || logMessageType === "log:thread-name") {
       if (isBotAdmin) {
-        // المطور غيره → حدث الحفظ
-        protect.name = logMessageData?.name || logMessageData?.threadName || "Unknown";
+        // المطور غير الاسم => نحدث المحفوظ
+        protect.name = logMessageData?.name || logMessageData?.threadName || protect.name;
       } else {
-        // شخص آخر → استرجاع الاسم فوراً
-        setTimeout(() => {
-          api.setTitle(protect.name, threadID).catch(() => {});
-        }, 300);
+        // غير المطور => نرجع الاسم المحفوظ فوراً
+        api.setTitle(protect.name, threadID).catch(() => {});
       }
     }
 
-    // ==================== حماية صورة الجروب ====================
-    // حدث تغيير الأيقونة (thread_icon أو log:thread-icon)
+    // ================== حماية الصورة ==================
     if (logMessageType === "thread_icon" || logMessageType === "log:thread-icon") {
       if (isBotAdmin) {
-        // محاولة تحديث الصورة الجديدة من الحدث
-        const newSrc = logMessageData?.thread_icon_url || logMessageData?.image_src || null;
-        if (newSrc) {
-          protect.imageSrc = newSrc;
-          // جلب الصورة كمخزن للاحتياط
-          try {
-            const res = await axios.get(newSrc, { responseType: "arraybuffer" });
+        // المطور غير الصورة => نجيب الصورة الجديدة ونحفظها
+        try {
+          const info = await api.getThreadInfo(threadID);
+          if (info.imageSrc) {
+            const res = await axios.get(info.imageSrc, { responseType: "arraybuffer", timeout: 10000 });
             protect.imageBuffer = Buffer.from(res.data);
-          } catch (e) {}
-        }
+          } else {
+            protect.imageBuffer = null;
+          }
+        } catch (e) {}
       } else {
-        // استرجاع الصورة القديمة
+        // غير المطور => نرجع الصورة المحفوظة فوراً
         if (protect.imageBuffer) {
-          // نستخدم المخزن أولاً (أسرع وأضمن)
+          // نستخدم المخزن مباشرة (أسرع وأضمن)
           for (let i = 0; i < 3; i++) {
             try {
               await api.changeGroupImage(protect.imageBuffer, threadID);
               break;
             } catch (e) {
-              await new Promise(r => setTimeout(r, 800));
+              await new Promise(r => setTimeout(r, 600));
             }
           }
-        } else if (protect.imageSrc) {
-          // لو المخزن فشل، نجرب الرابط
-          for (let i = 0; i < 2; i++) {
-            try {
-              const res = await axios.get(protect.imageSrc, { responseType: "stream", timeout: 10000 });
-              await api.changeGroupImage(res.data, threadID);
-              break;
-            } catch (e) {
-              await new Promise(r => setTimeout(r, 1000));
-            }
-          }
+        } else {
+          // لو الصورة فاضية نحذف أي صورة موجودة (نرجّع بدون صورة)
+          try {
+            await api.removeGroupImage(threadID);
+          } catch (e) {}
         }
       }
     }
