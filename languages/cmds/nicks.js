@@ -2,28 +2,26 @@ module.exports = {
   config: {
     name: "كنيات",
     version: "1.0.0",
-    author: "خبير البرمجة",
+    author: "Hadi",
     countDown: 5,
-    role: 1, // للمسؤولين فقط
+    role: 1,
     description: "تغيير كنية الجميع",
-    category: "القروب",
-    guide: "{pn} [الاسم الجديد]"
+    category: "group",
+    guide: "{pn} [الاسم]"
   },
 
   onStart: async function ({ api, event, args }) {
-    const { threadID } = event;
-    const customName = args.join(" ");
-    if (!customName) return api.sendMessage("❌ اكتب الاسم الذي تريده لجميع الأعضاء", threadID);
+    const name = args.join(" ");
+    if (!name) return api.sendMessage("اكتب الاسم بعد الأمر", event.threadID);
 
-    const threadInfo = await api.getThreadInfo(threadID);
-    const userIDs = threadInfo.participantIDs;
+    const threadInfo = await api.getThreadInfo(event.threadID);
+    const { participantIDs } = threadInfo;
 
-    api.sendMessage(`⏳ بدأت تغيير كنيات ${userIDs.length} عضو...`, threadID);
+    api.sendMessage(`جاري تغيير ${participantIDs.length} كنية...`, event.threadID);
 
-    userIDs.forEach((id, index) => {
-      setTimeout(() => {
-        api.changeNickname(customName, threadID, id);
-      }, index * 1500); // فاصل ثانية ونصف لحماية البوت
-    });
+    for (const id of participantIDs) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // انتظر ثانية
+      api.changeNickname(name, event.threadID, id);
+    }
   }
 };
