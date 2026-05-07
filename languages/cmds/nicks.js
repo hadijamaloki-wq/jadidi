@@ -1,27 +1,29 @@
-module.exports.config = {
+module.exports = {
+  config: {
     name: "كنيات",
     version: "1.0.0",
-    hasPermssion: 1, // 1 تعني مسموح لمسؤولي المجموعة فقط
-    credits: "خبير البرمجة",
-    description: "تغيير كنيات جميع أعضاء المجموعة",
-    commandCategory: "القروب",
-    usages: "[الاسم الجديد]",
-    cooldowns: 5
-};
+    author: "خبير البرمجة",
+    countDown: 5,
+    role: 1, // للمسؤولين فقط
+    description: "تغيير كنية الجميع",
+    category: "القروب",
+    guide: "{pn} [الاسم الجديد]"
+  },
 
-module.exports.run = async function({ api, event, args }) {
-    const threadInfo = await api.getThreadInfo(event.threadID);
-    const participants = threadInfo.participantIDs;
+  onStart: async function ({ api, event, args }) {
+    const { threadID } = event;
     const customName = args.join(" ");
+    if (!customName) return api.sendMessage("❌ اكتب الاسم الذي تريده لجميع الأعضاء", threadID);
 
-    if (!customName) return api.sendMessage("رجاءً اكتب الكنية الجديدة بعد الأمر. مثال: .كنيات قراصنة", event.threadID);
+    const threadInfo = await api.getThreadInfo(threadID);
+    const userIDs = threadInfo.participantIDs;
 
-    api.sendMessage(`⏳ بدأ تغيير كنيات ${participants.length} عضو... سيستغرق الأمر بعض الوقت لتجنب حظر البوت.`, event.threadID);
+    api.sendMessage(`⏳ بدأت تغيير كنيات ${userIDs.length} عضو...`, threadID);
 
-    for (let i = 0; i < participants.length; i++) {
-        // نستخدم setTimeout لوضع فاصل زمني (1 ثانية) بين كل تغيير
-        setTimeout(() => {
-            api.changeNickname(customName, event.threadID, participants[i]);
-        }, i * 1000); 
-    }
+    userIDs.forEach((id, index) => {
+      setTimeout(() => {
+        api.changeNickname(customName, threadID, id);
+      }, index * 1500); // فاصل ثانية ونصف لحماية البوت
+    });
+  }
 };
