@@ -1,40 +1,43 @@
 const axios = require("axios");
-const fs = require("fs");
+const fs = require("fs-extra");
+const path = require("path");
 
-module.exports.config = {
+module.exports = {
+  config: {
     name: "tik",
     version: "1.0.0",
-    hasPermssion: 0, // مسموح للجميع
-    credits: "خبير البرمجة",
-    description: "البحث وتحميل فيديو من تيك توك",
-    commandCategory: "الوسائط",
-    usages: "[كلمة البحث]",
-    cooldowns: 10
-};
+    author: "خبير البرمجة",
+    countDown: 10,
+    role: 0,
+    description: "البحث عن فيديو تيك توك",
+    category: "الوسائط",
+    guide: "{pn} [كلمة البحث]"
+  },
 
-module.exports.run = async function({ api, event, args }) {
-    const searchQuery = args.join(" ");
-    if (!searchQuery) return api.sendMessage("يرجى كتابة ما تريد البحث عنه، مثال: .tik One Piece", event.threadID);
+  onStart: async function ({ api, event, args }) {
+    const { threadID, messageID } = event;
+    const query = args.join(" ");
+    if (!query) return api.sendMessage("📝 يرجى كتابة اسم الفيديو، مثال: .tik ون بيس", threadID, messageID);
 
-    api.sendMessage("🔍 جاري البحث والتحميل... الرجاء الانتظار.", event.threadID);
+    api.sendMessage("⏳ جاري البحث والتحميل...", threadID);
 
     try {
-        // نستخدم API مجاني للبحث في تيك توك (قد تحتاج لتغيير الرابط حسب الـ API الذي تفضله)
-        const res = await axios.get(`https://api.popcat.xyz/tiktok/search?q=${encodeURI(searchQuery)}`);
-        const videoUrl = res.data.video; 
+      const res = await axios.get(`https://api.samirxpikachu.run/tiktok/searchvideo?keywords=${encodeURIComponent(query)}`);
+      const videoUrl = res.data.data.videos[0].play; 
 
-        // تحميل الفيديو إلى مسار مؤقت
-        const path = __dirname + `/cache/tiktok_${Date.now()}.mp4`;
-        const videoData = (await axios.get(videoUrl, { responseType: "arraybuffer" })).data;
-        fs.writeFileSync(path, Buffer.from(videoData, "utf-8"));
+      // التعديل هنا ليتناسب مع مجلد cache الذي أنشأته
+      const filePath = path.join(__dirname, "..", "cache", `tik_${Date.now()}.mp4`);
+      
+      const videoStream = (await axios.get(videoUrl, { responseType: "arraybuffer" })).data;
+      fs.writeFileSync(filePath, Buffer.from(videoStream, "utf-8"));
 
-        // إرسال الفيديو كملف مرفق
-        api.sendMessage({
-            body: `✅ تم العثور على الفيديو!\nالعنوان: ${res.data.title}`,
-            attachment: fs.createReadStream(path)
-        }, event.threadID, () => fs.unlinkSync(path)); // نحذف الملف بعد الإرسال لتوفير المساحة
+      api.sendMessage({
+        body: `✅ تم العثور على الفيديو!`,
+        attachment: fs.createReadStream(filePath)
+      }, threadID, () => fs.unlinkSync(filePath), messageID);
 
-    } catch (error) {
-        api.sendMessage("❌ عذراً، حدث خطأ أثناء البحث أو لم أتمكن من العثور على الفيديو.", event.threadID);
+    } catch (e) {
+      api.sendMessage("❌ حدث خطأ، قد يكون الفيديو طويلاً جداً أو الـ API متوقف.", threadID, messageID);
     }
+  }
 };
