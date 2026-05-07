@@ -3,7 +3,7 @@ const { getPrefix } = global.utils;
 module.exports = {
   config: {
     name: "help",
-    version: "3.2.0",
+    version: "3.3.0",
     author: "Amine (𝐀𝐥𝐞𝐧)",
     countDown: 5,
     role: 0,
@@ -13,13 +13,18 @@ module.exports = {
     guide: { en: "{pn} | {pn} <رقم الصفحة>" }
   },
 
-  onStart: async function ({ message, args, event }) {
+  onStart: async function ({ message, args, event, Commands }) {
     const { threadID } = event;
     const prefix = getPrefix(threadID);
     
-    // استدعاء الأوامر بالطريقة الصحيحة لنظام GoatBot
-    const { commands } = global.GoatBot;
-    const allCmds = Array.from(commands.values());
+    // محاولة ذكية: إذا لم يجد Commands يذهب لـ global.GoatBot
+    const allCommands = Commands || (global.GoatBot && global.GoatBot.commands);
+    
+    if (!allCommands) {
+        return message.reply("❌ عذراً، لم أتمكن من الوصول لمكتبة الأوامر حالياً.");
+    }
+
+    const allCmds = Array.from(allCommands.values());
 
     if (args.length === 0 || !isNaN(args[0])) {
       const page = parseInt(args[0]) || 1;
@@ -49,7 +54,7 @@ module.exports = {
     // تفاصيل أمر معين
     let input = args[0].toLowerCase();
     let commandName = input.startsWith(prefix) ? input.slice(prefix.length) : input;
-    let cmd = commands.get(commandName);
+    let cmd = allCommands.get(commandName);
 
     if (!cmd) return message.reply(`❌ لم أجد هذا الأمر`);
 
