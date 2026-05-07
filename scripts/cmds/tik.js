@@ -1,70 +1,64 @@
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-
-async function getStreamFromURL(url) {
-  const response = await axios.get(url, { responseType: 'stream' });
-  return response.data;
-}
-
-async function fetchTikTokVideos(query) {
-  try {
-    const response = await axios.get(`https://lyric-search-neon.vercel.app/kshitız?keyword=${query}`);
-    return response.data;
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
-}
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
 module.exports = {
   config: {
-    name: "anisearch",
-    aliases: [],
-    author: "Vex_kshitiz",
-    version: "1.0",
-    shortDescription: {
-      en: "get anime edit",
-    },
-    longDescription: {
-      en: "search for anime edits video",
-    },
+    name: "tik",
+    version: "2.0.0",
+    author: "Amine (Alen)",
+    countDown: 5,
+    role: 0,
+    shortDescription: { en: "البحث عن فيديوهات تيك توك وإرسالها" },
     category: "media",
-    guide: {
-      en: "{p}{n} [query]",
-    },
+    guide: { en: "{pn} <كلمات البحث>" }
   },
-  onStart: async function ({ api, event, args }) {
-     api.setMessageReaction("✨", event.messageID, (err) => {}, true);
-    const query = args.join(' ');
-    const modifiedQuery = `${query} anime edit`;
 
-    const videos = await fetchTikTokVideos(modifiedQuery);
+  onStart: async function ({ api, event, args, message }) {
+    const { threadID, messageID } = event;
+    const searchQuery = args.join(" ");
 
-    if (!videos || videos.length === 0) {
-      api.sendMessage({ body: `${query} not found.` }, event.threadID, event.messageID);
-      return;
-    }
+    if (!searchQuery) return message.reply("💍 وش تبي أدور لك في تيك توك؟ اكتب مثلاً: .tik مقاطع مضحكة");
 
-    const selectedVideo = videos[Math.floor(Math.random() * videos.length)];
-    const videoUrl = selectedVideo.videoUrl;
-
-    if (!videoUrl) {
-      api.sendMessage({ body: 'Error: Video not found.' }, event.threadID, event.messageID);
-      return;
-    }
+    message.reply(`🔍 جاري البحث عن "${searchQuery}" في تيك توك..`);
 
     try {
-      const videoStream = await getStreamFromURL(videoUrl);
+      // 1. البحث عن فيديوهات بناءً على الكلمة المفتاحية
+      const searchRes = await axios.get(`https://waifu-api.vercel.app/tiktok/search?query=${encodeURIComponent(searchQuery)}`);
+      
+      const videos = searchRes.data.results || searchRes.data;
+      if (!videos || videos.length === 0) throw new Error("لم يتم العثور على نتائج");
 
-      await api.sendMessage({
-        body: ``,
-        attachment: videoStream,
-      }, event.threadID, event.messageID);
-    } catch (error) {
-      console.error(error);
-      api.sendMessage({ body: 'An error occurred while processing the video.\nPlease try again later.' }, event.threadID, event.messageID);
+      // اختيار فيديو عشوائي من أول 5 نتائج لزيادة التنوع
+      const randomVideo = videos[Math.floor(Math.random() * Math.min(videos.length, 5))];
+      const videoUrl = randomVideo.video_url || randomVideo.play;
+      const title = randomVideo.title || "فيديو تيك توك";
+
+      // 2. تحميل الفيديو وإرساله
+      const videoPath = path.join(__dirname, "cache", `tik_search_${Date.now()}.mp4`);
+      if (!fs.existsSync(path.join(__dirname, "cache"))) fs.mkdirSync(path.join(__dirname, "cache"));
+
+      const response = await axios({
+        method: 'get',
+        url: videoUrl,
+        responseType: 'stream'
+      });
+
+      const writer = fs.createWriteStream(videoPath);
+      response.data.pipe(writer);
+
+      writer.on('finish', () => {
+        return api.sendMessage({
+          body: `🎬 نتيجة البحث: ${title}`,
+          attachment: fs.createReadStream(videoPath)
+        }, threadID, () => {
+          fs.unlinkSync(videoPath); // حذف الملف من السيرفر بعد الإرسال
+        }, messageID);
+      });
+
+    } catch (err) {
+      console.error(err);
+      return message.reply("❌ عذراً، لم أجد أي فيديو بهذا الاسم. جرب كلمات بحث أخرى.");
     }
-  },
+  }
 };
