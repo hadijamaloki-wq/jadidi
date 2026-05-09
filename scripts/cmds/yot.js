@@ -1,53 +1,146 @@
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
+const yts = require("yt-search");
+
 module.exports = {
   config: {
     name: "yot",
-    version: "1.0.1",
+    aliases: ["يوت", "reels"],
+    version: "1.0.0",
+    author: "Amin",
+    link: "https://www.facebook.com/profile.php?id=61578796876651",
     role: 0,
-    author: "AI",
-    description: "البحث عن فيديوهات يوتيوب وتحميلها",
-    category: "وسائط",
-    guide: "{pn} [اسم الفيديو]",
+    description: "البحث عن فيديوهات/ريلز يوتيوب واختيار واحد لتحميله",
+    category: "media",
+    guide: {
+      en: ".yot [اسم الفيديو أو الريلز]"
+    },
     countDown: 5
   },
 
   onStart: async function ({ api, event, args }) {
-    const axios = require("axios");
-    const yts = require("yt-search");
-    const searchQuery = args.join(" ");
+    const { threadID, messageID, senderID } = event;
+    const query = args.join(" ");
 
-    if (!searchQuery) return api.sendMessage("الرجاء كتابة اسم الفيديو، مثال: .yot ون بيس", event.threadID, event.messageID);
-
-    api.sendMessage("⏳ جاري البحث عن الفيديو وتحميله، يرجى الانتظار...", event.threadID);
+    if (!query) {
+      return api.sendMessage("⚠️ | يا **Maestro**، اكتب شنو بغيتي نقلب ليك!\nمثال: .yot Lookism shorts", threadID, messageID);
+    }
 
     try {
-      // 1. البحث عن الفيديو
-      const searchResults = await yts(searchQuery);
-      const video = searchResults.videos[0];
+      api.sendMessage("🔍 | جاري البحث في يوتيوب، تسنى شوية...", threadID, messageID);
 
-      if (!video) return api.sendMessage("❌ لم يتم العثور على نتائج.", event.threadID);
+      // البحث في يوتيوب (ضفنا كلمة shorts باش يجيب الفيديوهات القصيرة قدر الإمكان)
+      const searchResults = await yts(query + " shorts");
+      const videos = searchResults.videos.slice(0, 6); // أخذ أول 6 نتائج فقط
 
-      const message = `🎬 العنوان: ${video.title}\n⏱️ المدة: ${video.timestamp}`;
-      
-      // 2. استخدام API خارجي مجاني لتحميل فيديو يوتيوب كـ MP4
-      const dlRes = await axios.get(`https://api.davidcyriltech.my.id/download/ytmp4?url=${encodeURIComponent(video.url)}`);
-      
-      if (!dlRes.data.success) {
-          return api.sendMessage("❌ عذراً، فشل استخراج رابط تحميل الفيديو.", event.threadID);
+      if (videos.length === 0) {
+        return api.sendMessage("❌ | مالقيت حتى نتيجة، جرب تبدل الكلمات.", threadID, messageID);
       }
 
-      const videoDownloadUrl = dlRes.data.result.download_url;
+      const dir = path.join(__dirname, "cache");
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 
-      // 3. إرسال الفيديو كملف مرفق
-      const stream = (await axios.get(videoDownloadUrl, { responseType: "stream" })).data;
+      let msg = "[ 𝐘𝐮𝐚𝐧 𝐒𝐲𝐬𝐭𝐞𝐦 - 𝐘𝐨𝐮𝐓𝐮𝐛𝐞 𝐒𝐞𝐚𝐫𝐜𝐡 ]\n━━━━━━━━━━━━━━━\n";
+      let attachments = [];
+      let videoData = [];
+
+      // جلب الصور المصغرة (Thumbnails) وترتيب القائمة
+      for (let i = 0; i < videos.length; i++) {
+        const video = videos[i];
+        msg += `${i + 1}. 🎬 ${video.title}\n⏱️ المدة: ${video.timestamp}\n━━━━━━━━━━━━━━━\n`;
+        
+        const imgPath = path.join(dir, `yot_thumb_${i}.jpg`);
+        const response = await axios.get(video.thumbnail, { responseType: "arraybuffer" });
+        fs.writeFileSync(imgPath, Buffer.from(response.data));
+        attachments.push(fs.createReadStream(imgPath));
+        
+        videoData.push({
+          title: video.title,
+          url: video.url
+        });
+      }
+
+      msg += "📌 | **رد على هاد الرسالة برقم الفيديو (من 1 لـ 6) باش نحملو ليك!**";
+
+      // إرسال الرسالة مع الصور وتفعيل نظام الرد
+      api.sendMessage(
+        { body: msg, attachment: attachments },
+        threadID,
+        (err, info) => {
+          // مسح الصور من السيرفر بعد إرسالها لتوفير المساحة
+          attachments.forEach((_, i) => fs.unlinkSync(path.join(dir, `yot_thumb_${i}.jpg`)));
+
+          if (!err) {
+            // تسجيل الرسالة لانتظار رد المستخدم
+            global.client.handleReply.push({
+              name: module.exports.config.name,
+              messageID: info.messageID,
+              author: senderID, // باش يجاوب غير اللي طلب الأمر
+              videoList: videoData
+            });
+          }
+        },
+        messageID
+      );
+
+    } catch (error) {
+      console.error(error);
+      api.sendMessage("🥹 | حدث خطأ أثناء البحث، تواصل مع أمين.", threadID, messageID);
+    }
+  },
+
+  // هاد الجزء كيخدم ملي كترد على رسالة البوت برقم
+  onReply: async function ({ api, event, Reply }) {
+    const { threadID, messageID, senderID, body } = event;
+
+    // التأكد أن الشخص اللي رد هو نفسه اللي طلب الأمر
+    if (senderID !== Reply.author) {
+      return api.sendMessage("⚠️ | هاد القائمة ماشي ديالك، دير أمر .yot باش تقلب لراسك.", threadID, messageID);
+    }
+
+    const choice = parseInt(body);
+
+    // التحقق من أن الرد عبارة عن رقم صحيح بين 1 و 6
+    if (isNaN(choice) || choice < 1 || choice > Reply.videoList.length) {
+      return api.sendMessage("❌ | اختار رقم صحيح من 1 لـ " + Reply.videoList.length, threadID, messageID);
+    }
+
+    const selectedVideo = Reply.videoList[choice - 1];
+
+    try {
+      api.sendMessage(`⏳ | جاري تحميل: **${selectedVideo.title}**...`, threadID, messageID);
+
+      // تنبيه: هنا كنستعملو API خارجي مجاني لتحميل الفيديو. 
+      // إذا كان عندك API خاص بك، تقدر تبدل الرابط.
+      const dlApiUrl = `https://api.joshweb.click/api/yt-dlp?url=${encodeURIComponent(selectedVideo.url)}`;
+      const res = await axios.get(dlApiUrl);
       
-      return api.sendMessage({
-        body: message,
-        attachment: stream
-      }, event.threadID, event.messageID);
+      const videoUrl = res.data.result.video; // تأكد من استجابة الـ API
 
-    } catch (e) {
-      console.log(e);
-      return api.sendMessage("❌ حدث خطأ أثناء البحث أو أن حجم الفيديو كبير جداً على الإرسال.", event.threadID);
+      if (!videoUrl) throw new Error("لا يوجد رابط تحميل مباشر");
+
+      const vidPath = path.join(__dirname, "cache", `yot_video_${senderID}.mp4`);
+      const vidRes = await axios.get(videoUrl, { responseType: "arraybuffer" });
+      fs.writeFileSync(vidPath, Buffer.from(vidRes.data));
+
+      // إزالة الرسالة من الانتظار باش ما يعاودش يرد عليها
+      const index = global.client.handleReply.findIndex(e => e.messageID === Reply.messageID);
+      if (index !== -1) global.client.handleReply.splice(index, 1);
+
+      api.sendMessage(
+        {
+          body: `🎥 | تفضل الفيديو ديالك!\n👤 المطور: Amin\n🔗 حسابي: ${module.exports.config.link}`,
+          attachment: fs.createReadStream(vidPath)
+        },
+        threadID,
+        () => fs.unlinkSync(vidPath),
+        messageID
+      );
+
+    } catch (error) {
+      console.error(error);
+      api.sendMessage("❌ | ماقديتش نحمل هاد الفيديو، يقدر يكون طويل بزاف أو فيه حقوق طبع ونشر.", threadID, messageID);
     }
   }
 };
