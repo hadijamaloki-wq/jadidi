@@ -1,68 +1,84 @@
 // مخزن عالمي لإدارة الفواصل الزمنية لكل مجموعة
 if (!global.s_loops) global.s_loops = {};
 
-module.exports.config = {
-  name: "s",
-  aliases: ["s", "نيڪمو"],
-  version: "2.1.0",
-  author: "Hanji & Gemini",
-  role: 2, 
-  description: { en: "إرسال رسالة متكررة بفاصل زمني محدد مع تفاعل صامت" },
-  category: "tools",
-  guide: {
-    en: "{pn} [المدة بالثواني] [الرسالة] - لبدء الإرسال\n{pn} off - لإيقاف الإرسال"
+module.exports = {
+  config: {
+    name: "s",
+    aliases: ["سبام"], // قمت بتغيير الاختصار ليكون احترافياً
+    version: "2.5.0",
+    author: "Amin", // اسمك يا بطل
+    link: "https://www.facebook.com/profile.php?id=61578796876651",
+    role: 2, // مخصص للمطور فقط
+    description: "إرسال رسالة متكررة بفاصل زمني محدد مع تفاعل صامت",
+    category: "system",
+    guide: {
+      en: ".s [المدة بالثواني] [الرسالة] - لبدء الإرسال\n.s off - لإيقاف الإرسال"
+    },
+    countDown: 0
   },
-  countDown: 0
-};
 
-module.exports.onStart = async ({ api, event, args }) => {
-  const { threadID, messageID } = event;
+  onStart: async function ({ api, event, args }) {
+    const { threadID, messageID, senderID } = event;
+    const myUID = "61578796876651"; // آيدي الخاص بك
 
-  // 1. خيار الإيقاف
-  if (args[0] === "off") {
-    if (global.s_loops[threadID]) {
-      clearInterval(global.s_loops[threadID]);
-      delete global.s_loops[threadID];
-      // تفاعل الصح عند الإيقاف أيضاً ليكون العمل متسقاً
-      return api.setMessageReaction("✅", messageID, () => {}, true);
+    // حماية الحقوق الخاصة بك (Amin)
+    const obfuscatedAuthor = String.fromCharCode(65, 109, 105, 110); 
+    if (module.exports.config.author.trim() !== obfuscatedAuthor) {
+      return api.sendMessage("❌ | لا يمكنك تغيير حقوق المطور أمين.", threadID, messageID);
     }
-    return;
-  }
 
-  // 2. تحليل الوقت والرسالة
-  let delayInSeconds = parseInt(args[0]);
-  let messageText;
+    // حماية إضافية: أنت فقط من يستطيع استخدام هذا الأمر
+    if (senderID !== myUID) return;
 
-  if (isNaN(delayInSeconds)) {
-    delayInSeconds = 15;
-    messageText = args.join(" ").trim();
-  } else {
-    messageText = args.slice(1).join(" ").trim();
-  }
-
-  // التحقق من وجود نص
-  if (!messageText) return;
-
-  // تحويل الثواني إلى ميلي ثانية
-  const delayMs = delayInSeconds * 1000;
-
-  // منع السبام القاتل (أقل من ثانية واحدة)
-  if (delayMs < 1000) return;
-
-  // 3. مسح أي حلقة قديمة تعمل في نفس المجموعة
-  if (global.s_loops[threadID]) clearInterval(global.s_loops[threadID]);
-
-  // التفاعل بعلامة الصح ✅ بدلاً من إرسال رسالة بداية
-  api.setMessageReaction("✅", messageID, () => {}, true);
-
-  // 4. بدء حلقة الإرسال
-  global.s_loops[threadID] = setInterval(() => {
-    api.sendMessage(messageText, threadID, (err) => {
-      if (err) {
-        // إذا حدث خطأ، يتم إيقاف الحلقة تلقائياً
+    // 1. خيار الإيقاف (.s off)
+    if (args[0] === "off") {
+      if (global.s_loops[threadID]) {
         clearInterval(global.s_loops[threadID]);
         delete global.s_loops[threadID];
+        // تفاعل الصح عند الإيقاف بنجاح
+        return api.setMessageReaction("✅", messageID, () => {}, true);
       }
-    });
-  }, delayMs);
+      return; // إذا لم يكن هناك سبام شغال، لا تفعل شيئاً
+    }
+
+    // 2. تحليل الوقت والرسالة
+    let delayInSeconds = parseInt(args[0]);
+    let messageText;
+
+    // إذا لم يكتب رقماً، نجعل الوقت الافتراضي 15 ثانية
+    if (isNaN(delayInSeconds)) {
+      delayInSeconds = 15;
+      messageText = args.join(" ").trim();
+    } else {
+      messageText = args.slice(1).join(" ").trim();
+    }
+
+    // التحقق من وجود نص للسبام
+    if (!messageText) return;
+
+    // تحويل الثواني إلى ميلي ثانية
+    const delayMs = delayInSeconds * 1000;
+
+    // 🛡️ حماية الكوكيز: منع الإرسال بأقل من ثانية
+    if (delayMs < 1000) {
+      return api.sendMessage("⚠️ | يا **Maestro**، خلي الوقت على الأقل ثانية وحدة (1) باش فيسبوك ما يحظرش البوت.", threadID);
+    }
+
+    // 3. مسح أي حلقة قديمة تعمل في نفس المجموعة حتى لا تتداخل
+    if (global.s_loops[threadID]) clearInterval(global.s_loops[threadID]);
+
+    // التفاعل بعلامة الصح ✅ كدليل على بدء العملية (بدون إرسال رسالة تفضح البوت)
+    api.setMessageReaction("✅", messageID, () => {}, true);
+
+    // 4. بدء حلقة الإرسال (Loop)
+    global.s_loops[threadID] = setInterval(() => {
+      api.sendMessage(messageText, threadID, (err) => {
+        if (err) {
+          // إذا حدث خطأ (مثل حظر البوت أو خروجه)، يتم إيقاف الحلقة تلقائياً
+          clearInterval(global.s_loops[threadID]);
+          delete global.s_loops[threadID];
+        }
+      });
+    }, delayMs);
+  }
 };
