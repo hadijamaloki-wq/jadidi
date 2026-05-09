@@ -6,11 +6,11 @@ const yts = require("yt-search");
 module.exports = {
   config: {
     name: "yot",
-    aliases: ["يوت", "yt"],
-    version: "2.0.0",
+    aliases: ["يوت"],
+    version: "2.1.0",
     author: "Amin",
     role: 0,
-    description: "تحميل يوتيوب بسيرفر سريع (أقل من 6 دقائق)",
+    description: "تحميل يوتيوب سريع جداً (مثل تيك توك)",
     category: "media",
     guide: { en: ".yot [اسم الفيديو]" }
   },
@@ -19,16 +19,16 @@ module.exports = {
     const { threadID, messageID, senderID } = event;
     const query = args.join(" ");
 
-    if (!query) return api.sendMessage("⚠️ | يا **Maestro**، قولي شنو بغيتي نقلب ليك في يوتيوب!", threadID, messageID);
+    if (!query) return api.sendMessage("⚠️ | يا **Maestro**، اكتب شنو بغيتي نقلب ليك!", threadID, messageID);
 
     try {
-      api.sendMessage("🔍 | جاري البحث عن أفضل النتائج القصيره...", threadID, messageID);
+      api.sendMessage("🔍 | جاري البحث السريع...", threadID, messageID);
 
       const search = await yts(query);
-      // فلتر صارم: فيديوهات قل من 6 دقايق وماشي بث مباشر
-      const videos = search.videos.filter(v => v.seconds <= 360 && v.type === 'video').slice(0, 6);
+      // كنجيبو فقط الفيديوهات اللي قل من 6 دقايق لضمان السرعة
+      const videos = search.videos.filter(v => v.seconds <= 360).slice(0, 6);
 
-      if (videos.length === 0) return api.sendMessage("❌ | مالقيت حتى فيديو قصير بهاد السمية، جرب كلمات أخرى.", threadID, messageID);
+      if (videos.length === 0) return api.sendMessage("❌ | مالقيت حتى فيديو قصير.", threadID, messageID);
 
       const dir = path.join(__dirname, "cache");
       if (!fs.existsSync(dir)) fs.mkdirSync(dir);
@@ -39,7 +39,7 @@ module.exports = {
 
       for (let i = 0; i < videos.length; i++) {
         const v = videos[i];
-        msg += `${i + 1}. 🎬 ${v.title}\n⏱️ المده: ${v.timestamp}\n━━━━━━━━━━━━━━━\n`;
+        msg += `${i + 1}. 🎬 ${v.title}\n⏱️ ${v.timestamp}\n━━━━━━━━━━━━━━━\n`;
         
         const imgPath = path.join(dir, `yot_${i}_${senderID}.jpg`);
         const res = await axios.get(v.thumbnail, { responseType: "arraybuffer" });
@@ -49,10 +49,8 @@ module.exports = {
         videoData.push({ title: v.title, url: v.url });
       }
 
-      msg += "📌 | رد برقم الفيديو (1-6) باش نحملو ليك!";
-
-      api.sendMessage({ body: msg, attachment: attachments }, threadID, (err, info) => {
-        // حذف الصور فوراً بعد الإرسال لتوفير المساحة
+      api.sendMessage({ body: msg + "📌 | رد برقم الفيديو!", attachment: attachments }, threadID, (err, info) => {
+        // مسح الصور فوراً لتجنب الثقل
         attachments.forEach((_, i) => {
             const p = path.join(dir, `yot_${i}_${senderID}.jpg`);
             if (fs.existsSync(p)) fs.unlinkSync(p);
@@ -69,13 +67,12 @@ module.exports = {
       }, messageID);
 
     } catch (error) {
-      api.sendMessage("🥹 | كاين ضغط على البحث، جرب مرة أخرى.", threadID, messageID);
+      api.sendMessage("🥹 | خطأ في البحث، جرب مرة أخرى.", threadID, messageID);
     }
   },
 
   onReply: async function ({ api, event, Reply }) {
     const { threadID, messageID, senderID, body } = event;
-
     if (senderID !== Reply.author) return;
 
     const choice = parseInt(body);
@@ -88,34 +85,31 @@ module.exports = {
 
     try {
       api.setMessageReaction("⏳", messageID, () => {}, true);
-      api.unsendMessage(Reply.messageID); // مسح قائمة الـ 6 صور
-
-      // 🚀 سيرفر جديد (Vaxer) معروف بالسرعة في يوتيوب
-      const res = await axios.get(`https://api.vaxer.my.id/api/v1/ytmp4?url=${encodeURIComponent(selected.url)}`);
+      api.unsendMessage(Reply.messageID); // حذف قائمة الصور فوراً
       
-      // تأكد من جلب الرابط الصحيح من الـ API
-      const videoLink = res.data.data.url || res.data.data.download; 
+      api.sendMessage(`⏳ | جاري التحميل بنظام تيك توك السريع...`, threadID, messageID);
 
-      if (!videoLink) throw new Error("Link not found");
+      // 🚀 سيرفر Abtas المباشر (الأفضل حالياً)
+      const res = await axios.get(`https://api.abtas.my.id/api/ytmp4?url=${encodeURIComponent(selected.url)}`);
+      const videoUrl = res.data.result.url;
 
-      const vidPath = path.join(__dirname, "cache", `yot_v_${senderID}.mp4`);
-      const vidRes = await axios.get(videoLink, { responseType: "arraybuffer" });
-      fs.writeFileSync(vidPath, Buffer.from(vidRes.data));
+      if (!videoUrl) throw new Error("No URL found");
+
+      const vidPath = path.join(__dirname, "cache", `yot_${senderID}.mp4`);
+      const vidBuffer = await axios.get(videoUrl, { responseType: "arraybuffer" });
+      fs.writeFileSync(vidPath, Buffer.from(vidBuffer.data));
 
       global.GoatBot.onReply.delete(Reply.messageID);
       api.setMessageReaction("✅", messageID, () => {}, true);
 
       api.sendMessage({
-        body: `🎥 | هاهو الفيديو ديالك يا Maestro!\n📌 ${selected.title}`,
+        body: `🎥 | تفضل الفيديو ديالك يا Maestro!\n📌 ${selected.title}`,
         attachment: fs.createReadStream(vidPath)
-      }, threadID, () => {
-          if (fs.existsSync(vidPath)) fs.unlinkSync(vidPath);
-      }, messageID);
+      }, threadID, () => fs.unlinkSync(vidPath), messageID);
 
     } catch (error) {
-      console.error(error);
       api.setMessageReaction("❌", messageID, () => {}, true);
-      api.sendMessage("❌ | هاد السيرفر عيان دابا، غنجرب واحد آخر...\n(جرب تعاود الأمر مرة أخرى، غالباً غيخدم)", threadID, messageID);
+      api.sendMessage("❌ | هاد الفيديو فيه حماية عالية، جرب فيديو آخر.", threadID, messageID);
     }
   }
 };
