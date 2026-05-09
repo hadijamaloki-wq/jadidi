@@ -5,135 +5,102 @@ const path = require("path");
 module.exports = {
   config: {
     name: "tik",
-    aliases: ["tiktok", "تيك", "تيكتوك"],
-    version: "1.1.0",
+    aliases: ["tiktok", "تيك"],
+    version: "1.2.0",
     author: "Amin",
-    link: "https://www.facebook.com/profile.php?id=61578796876651",
     role: 0,
-    description: "البحث في تيك توك واختيار فيديو لتحميله (6 نتائج)",
+    description: "البحث في تيك توك",
     category: "media",
-    guide: {
-      en: ".tik [كلمة البحث]"
-    },
-    countDown: 5
+    guide: { en: ".tik [الكلمة]" }
   },
 
   onStart: async function ({ api, event, args }) {
     const { threadID, messageID, senderID } = event;
     const query = args.join(" ");
 
-    if (!query) {
-      return api.sendMessage("⚠️ | يا **Maestro**، اكتب شنو بغيتي نقلب ليك في تيك توك!\nمثال: .tik Lookism edit", threadID, messageID);
-    }
+    if (!query) return api.sendMessage("⚠️ | اكتب شنو نقلب ليك!", threadID, messageID);
 
     try {
-      api.sendMessage("🔍 | جاري البحث في تيك توك، تسنى شوية...", threadID, messageID);
+      api.sendMessage("🔍 | جاري البحث في تيك توك...", threadID, messageID);
 
-      // البحث عن الفيديوهات باستخدام API
-      const searchUrl = `https://api.tiklydown.eu.org/api/main/search?q=${encodeURIComponent(query)}`;
+      // استبدال الـ API الميت بـ API قوي (TikWM)
+      const searchUrl = `https://tikwm.com/api/feed/search?keywords=${encodeURIComponent(query)}&count=6`;
       const response = await axios.get(searchUrl);
-      const videos = response.data.result.slice(0, 6); // أخذ أول 6 نتائج
+      
+      const videos = response.data.data.videos;
 
       if (!videos || videos.length === 0) {
-        return api.sendMessage("❌ | مالقيت حتى نتيجة في تيك توك، جرب تبدل الكلمات.", threadID, messageID);
+        return api.sendMessage("❌ | مالقيت حتى نتيجة.", threadID, messageID);
       }
 
       const dir = path.join(__dirname, "cache");
       if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 
-      let msg = "[ 𝐘𝐮𝐚𝐧 𝐒𝐲𝐬𝐭𝐞𝐦 - 𝐓𝐢𝐤𝐓𝐨𝐤 𝐒𝐞𝐚𝐫𝐜𝐡 ]\n━━━━━━━━━━━━━━━\n";
+      let msg = "[ 𝐘𝐮𝐚𝐧 𝐒𝐲𝐬𝐭𝐞𝐦 - 𝐓𝐢𝐤𝐓𝐨𝐤 ]\n━━━━━━━━━━━━━━━\n";
       let attachments = [];
       let videoData = [];
 
       for (let i = 0; i < videos.length; i++) {
         const video = videos[i];
-        msg += `${i + 1}. 👤 ${video.author.nickname}\n📝 ${video.title.substring(0, 50)}...\n━━━━━━━━━━━━━━━\n`;
+        msg += `${i + 1}. 👤 ${video.author.nickname}\n📝 ${video.title.substring(0, 30)}...\n━━━━━━━━━━━━━━━\n`;
         
-        const imgPath = path.join(dir, `tik_thumb_${i}.jpg`);
+        const imgPath = path.join(dir, `tik_${i}.jpg`);
         const imgRes = await axios.get(video.cover, { responseType: "arraybuffer" });
         fs.writeFileSync(imgPath, Buffer.from(imgRes.data));
         attachments.push(fs.createReadStream(imgPath));
         
-        videoData.push({
-          title: video.title,
-          url: video.url 
-        });
+        videoData.push({ title: video.title, playUrl: video.play });
       }
 
-      msg += "📌 | **رد على هاد الرسالة برقم الفيديو باش نحملو ليك بلا علامة مائية!**";
+      msg += "📌 | **رد على هاد الرسالة برقم الفيديو!**";
 
-      api.sendMessage(
-        { body: msg, attachment: attachments },
-        threadID,
-        (err, info) => {
-          // تنظيف الصور من الكاش
-          attachments.forEach((_, i) => {
-             const p = path.join(dir, `tik_thumb_${i}.jpg`);
-             if (fs.existsSync(p)) fs.unlinkSync(p);
+      api.sendMessage({ body: msg, attachment: attachments }, threadID, (err, info) => {
+        attachments.forEach((_, i) => fs.unlinkSync(path.join(dir, `tik_${i}.jpg`)));
+        
+        if (!err) {
+          // تسجيل الرد بنظام Goat-Bot
+          global.GoatBot.onReply.set(info.messageID, {
+            commandName: module.exports.config.name,
+            messageID: info.messageID,
+            author: senderID,
+            videoList: videoData
           });
-
-          if (!err) {
-            global.client.handleReply.push({
-              name: module.exports.config.name,
-              messageID: info.messageID,
-              author: senderID,
-              videoList: videoData
-            });
-          }
-        },
-        messageID
-      );
+        }
+      }, messageID);
 
     } catch (error) {
-      console.error(error);
-      api.sendMessage("🥹 | حدث خطأ أثناء البحث، جرب لاحقاً.", threadID, messageID);
+      api.sendMessage("🥹 | حدث خطأ، تواصل مع المطور.", threadID, messageID);
     }
   },
 
   onReply: async function ({ api, event, Reply }) {
     const { threadID, messageID, senderID, body } = event;
 
-    if (senderID !== Reply.author) {
-      return api.sendMessage("⚠️ | هاد القائمة ماشي ديالك يا بطل!", threadID, messageID);
-    }
+    if (senderID !== Reply.author) return api.sendMessage("⚠️ | هاد القائمة ماشي ديالك!", threadID, messageID);
 
     const choice = parseInt(body);
     if (isNaN(choice) || choice < 1 || choice > Reply.videoList.length) {
-      return api.sendMessage("❌ | اختار رقم صحيح من 1 لـ " + Reply.videoList.length, threadID, messageID);
+      return api.sendMessage("❌ | اختار رقم صحيح.", threadID, messageID);
     }
 
     const selectedVideo = Reply.videoList[choice - 1];
 
     try {
-      api.sendMessage(`⏳ | جاري تحميل فيديو تيك توك بدون علامة مائية...`, threadID, messageID);
+      api.sendMessage(`⏳ | جاري التحميل بدون علامة مائية...`, threadID, messageID);
 
-      const dlUrl = `https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(selectedVideo.url)}`;
-      const dlRes = await axios.get(dlUrl);
-      const videoDirectUrl = dlRes.data.result.video.noWatermark; 
-
-      const vidPath = path.join(__dirname, "cache", `tik_video_${senderID}.mp4`);
-      const vidRes = await axios.get(videoDirectUrl, { responseType: "arraybuffer" });
+      const vidPath = path.join(__dirname, "cache", `tik_vid.mp4`);
+      const vidRes = await axios.get(selectedVideo.playUrl, { responseType: "arraybuffer" });
       fs.writeFileSync(vidPath, Buffer.from(vidRes.data));
 
-      // مسح من قائمة الردود بعد الاختيار
-      const index = global.client.handleReply.findIndex(e => e.messageID === Reply.messageID);
-      if (index !== -1) global.client.handleReply.splice(index, 1);
+      global.GoatBot.onReply.delete(Reply.messageID);
 
-      api.sendMessage(
-        {
-          body: `🎬 | تيك توك جاهز!\n👤 المطور: Amin\n🔗 حسابي: ${module.exports.config.link}`,
-          attachment: fs.createReadStream(vidPath)
-        },
-        threadID,
-        () => {
-            if (fs.existsSync(vidPath)) fs.unlinkSync(vidPath);
-        },
-        messageID
-      );
+      api.sendMessage({
+        body: `🎬 | تيك توك جاهز!\n👤 المطور: Amin`,
+        attachment: fs.createReadStream(vidPath)
+      }, threadID, () => fs.unlinkSync(vidPath), messageID);
 
     } catch (error) {
-      console.error(error);
-      api.sendMessage("❌ | فشل تحميل الفيديو من تيك توك، جرب فيديو آخر.", threadID, messageID);
+      api.sendMessage("❌ | فشل التحميل.", threadID, messageID);
     }
   }
 };
